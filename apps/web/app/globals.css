@@ -148,7 +148,11 @@ button.choice, button.scheme {
   gap: 4px;
   border-radius: 18px;
   line-height: 1.45;
+  color: var(--ink);
+  background: #fff;
 }
+button.choice .muted, button.scheme .muted { color: #4a453e; }
+.choice-copy { color: #2c2924; font-size: 14px; }
 .scheme-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
 .scheme-head b { white-space: nowrap; }
 .choice.on, .scheme.on { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
@@ -157,7 +161,7 @@ button.choice, button.scheme {
 .tabs { display: flex; gap: 8px; }
 .tabs button { flex: 1; background: white; color: var(--ink); border: 1px solid var(--line); }
 .tabs button.on { background: var(--ink); color: white; }
-.scene-host { height: 300px; border-radius: 18px; overflow: hidden; background: #e7e1d8; touch-action: none; }
+.scene-host { height: 420px; border-radius: 18px; overflow: hidden; background: #d9d3c8; touch-action: none; }
 .scene-host canvas { width: 100% !important; height: 100% !important; display: block; }
 .quote-lines { display: flex; flex-direction: column; gap: 8px; }
 .quote-line, .quote-total-row { display: flex; justify-content: space-between; gap: 12px; }

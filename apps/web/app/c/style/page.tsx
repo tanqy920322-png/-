@@ -69,7 +69,7 @@ export default function StylePage() {
               <i key={color} style={{ background: color }} />
             ))}
           </span>
-          <span>{style.description}</span>
+          <span className="choice-copy">{style.description}</span>
         </button>
       ))}
     </div>
