@@ -35,6 +35,59 @@ def get_engine():
     return engine
 
 
+def _scheme_style_is_required(inspector, tables: set[str]) -> bool:
+    if "schemes" not in tables:
+        return False
+    for column in inspector.get_columns("schemes"):
+        if column["name"] == "style_id":
+            return not column.get("nullable", True)
+    return False
+
+
+def _relax_sqlite_scheme_style(connection) -> None:
+    """SQLite cannot DROP NOT NULL. Rebuild schemes so shared SKUs can omit style_id."""
+    from sqlalchemy import text
+
+    connection.execute(text("PRAGMA foreign_keys=OFF"))
+    connection.execute(text("DROP TABLE IF EXISTS schemes_new"))
+    connection.execute(
+        text(
+            """
+            CREATE TABLE schemes_new (
+                id VARCHAR(80) NOT NULL PRIMARY KEY,
+                style_id VARCHAR(40),
+                part_id VARCHAR(32) NOT NULL,
+                scheme_index INTEGER NOT NULL,
+                name VARCHAR(80) NOT NULL,
+                summary TEXT,
+                unit_price NUMERIC(12, 2) NOT NULL,
+                is_default BOOLEAN,
+                material JSON,
+                CONSTRAINT uq_scheme_slot UNIQUE (style_id, part_id, scheme_index),
+                FOREIGN KEY(style_id) REFERENCES styles (id),
+                FOREIGN KEY(part_id) REFERENCES parts (id)
+            )
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            INSERT INTO schemes_new (
+                id, style_id, part_id, scheme_index, name, summary, unit_price, is_default, material
+            )
+            SELECT id, style_id, part_id, scheme_index, name, summary, unit_price, is_default, material
+            FROM schemes
+            """
+        )
+    )
+    connection.execute(text("DROP TABLE schemes"))
+    connection.execute(text("ALTER TABLE schemes_new RENAME TO schemes"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_schemes_style_id ON schemes (style_id)"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_schemes_part_id ON schemes (part_id)"))
+    connection.execute(text("PRAGMA foreign_keys=ON"))
+
+
 def ensure_schema(engine) -> None:
     """Add columns introduced after the first scaffold without a migration tool."""
     from sqlalchemy import inspect, text
@@ -50,12 +103,16 @@ def ensure_schema(engine) -> None:
             statements.append("ALTER TABLE parts ADD COLUMN allows_brand_tier BOOLEAN DEFAULT FALSE")
         if "visual" not in columns:
             statements.append("ALTER TABLE parts ADD COLUMN visual BOOLEAN DEFAULT FALSE")
-    if statements or ("schemes" in tables and engine.dialect.name == "postgresql"):
+    relax_sqlite = engine.dialect.name == "sqlite" and _scheme_style_is_required(inspector, tables)
+    relax_postgres = engine.dialect.name == "postgresql" and _scheme_style_is_required(inspector, tables)
+    if statements or relax_sqlite or relax_postgres:
         with engine.begin() as connection:
             for statement in statements:
                 connection.execute(text(statement))
-            if "schemes" in tables and engine.dialect.name == "postgresql":
+            if relax_postgres:
                 connection.execute(text("ALTER TABLE schemes ALTER COLUMN style_id DROP NOT NULL"))
+            if relax_sqlite:
+                _relax_sqlite_scheme_style(connection)
 
 
 def get_session_factory():

@@ -52,6 +52,14 @@ docker compose down -v
 docker compose up -d
 ```
 
+如果本地用的是 SQLite（例如 `DATABASE_URL=sqlite+pysqlite:///./var/fitout.db`，文件在 `apps/api/var/fitout.db`），先停掉 API，再删库后重启，让九类 SKU 重新播种：
+
+```bash
+rm -f apps/api/var/fitout.db
+```
+
+启动时也会把旧库里 `schemes.style_id` 的非空约束拆掉，共享 SKU（洁具、柜体等，不绑定风格）才能写进去。删文件是干净重来的办法。
+
 测试：
 
 ```bash
