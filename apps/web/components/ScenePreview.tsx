@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { MaterialSpec } from "@/lib/types";
-import { applyFloor, applyPaint, shade } from "@/components/sceneTextures";
+import { applyFinish, preloadFinishTextures, shade } from "@/components/sceneTextures";
 
 type Look = {
   ceiling: MaterialSpec;
@@ -424,23 +424,25 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
 
     const apply = () => {
       const look = lookRef.current;
-      applyFloor(floorMat, look.floor, look.styleId);
-      ceilingMat.color.set(look.ceiling.color);
-      ceilingMat.roughness = look.ceiling.feature === "gloss_panel" || look.ceiling.feature === "mirror_edge" ? 0.18 : look.ceiling.roughness;
-      ceilingMat.metalness = look.ceiling.feature === "mirror_edge" ? 0.55 : look.ceiling.metalness;
-      ceilingMat.map = null;
+      applyFinish(floorMat, "floor", look.floor, look.styleId);
+      applyFinish(ceilingMat, "ceiling", look.ceiling, look.styleId);
+      applyFinish(wallMat, "wall", look.wall, look.styleId);
+      const featureSpec = {
+        ...look.wall,
+        color: look.wall.feature === "paint" || look.wall.feature === "gloss" ? look.wall.color : look.wall.accent,
+        feature: look.wall.feature === "veneer" ? "wainscot" : look.wall.feature,
+      };
+      applyFinish(featureMat, "feature", featureSpec, look.styleId);
+      applyFinish(
+        veneerMat,
+        "feature",
+        { ...look.ceiling, color: look.ceiling.accent, feature: "veneer" },
+        look.styleId,
+      );
       soffitMat.color.set(shade(look.ceiling.color, 0.9));
       soffitMat.roughness = 0.88;
-      applyPaint(wallMat, look.wall, "wall");
-      wallMat.roughness = look.wall.roughness;
-      wallMat.metalness = look.wall.metalness;
       trimMat.color.set(shade(look.wall.color, 0.78));
       trimMat.roughness = 0.62;
-
-      const wallGrain = look.wall.feature === "leather" ? "leather" : look.wall.feature === "stone_full" || look.wall.feature === "sintered" ? "stone" : "flat";
-      applyPaint(featureMat, { ...look.wall, color: look.wall.feature === "paint" || look.wall.feature === "gloss" ? look.wall.color : look.wall.accent }, wallGrain);
-      featureMat.roughness = look.wall.feature === "upholstered" || look.wall.feature === "leather" || look.wall.feature === "fabric_accent" ? 0.94 : look.wall.roughness;
-      featureMat.metalness = look.wall.feature === "sintered" ? 0.18 : 0.02;
 
       const metalColor = look.styleId === "light_luxury" ? "#c6a36a" : look.ceiling.accent;
       metalMat.color.set(look.ceiling.feature === "mirror_edge" ? "#1a1a1a" : metalColor);
@@ -480,6 +482,9 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
       pendantLight.color.set(look.styleId === "light_luxury" ? "#f0d7a4" : "#ffc98a");
     };
     applyRef.current = apply;
+    preloadFinishTextures().then(() => {
+      if (applyRef.current) applyRef.current();
+    });
     apply();
 
     const resize = () => {
@@ -517,7 +522,10 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
           materials.forEach((material) => {
             if (disposedMaterials.has(material)) return;
             disposedMaterials.add(material);
-            if (material.map) material.map.dispose();
+            if (material instanceof THREE.MeshStandardMaterial) {
+              const owned = material.userData.ownedMaps as THREE.Texture[] | undefined;
+              owned?.forEach((texture) => texture.dispose());
+            }
             material.dispose();
           });
         }

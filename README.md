@@ -101,7 +101,7 @@ cd apps/api && .venv/bin/pytest
 - 图册导出：ZIP 里只有说明和 manifest，没有效果图。
 - 报价 PDF 使用随仓库附带的 Droid Sans Fallback（Apache 2.0，见 `apps/api/app/fonts/`）。
 
-三维预览是示意几何体，不是施工 BIM。
+三维预览是示意几何体，不是施工 BIM。天花、地面、墙面用 `apps/web/public/textures/` 里的小贴图（颜色、粗糙度、法线），颜色仍由所选方案决定。柜体、门和电器不进这张图。
 
 ## 不做
 
