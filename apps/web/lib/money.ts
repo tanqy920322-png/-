@@ -43,7 +43,7 @@ export function withScheme(selection: Selection, scheme: Scheme): Selection {
     ["floor", "地面", next.floor],
     ["wall", "墙面", next.wall],
   ] as const;
-  const lines = parts.map(([id, name, item]) => {
+  const finishLines = parts.map(([id, name, item]) => {
     const unit = item?.unit_price ?? 0;
     return {
       part_id: id,
@@ -53,8 +53,12 @@ export function withScheme(selection: Selection, scheme: Scheme): Selection {
       unit_price: item ? unit : null,
       area_m2: area,
       amount: item ? mulMoney(unit, area) : 0,
+      pricing: "area" as const,
+      quantity: 1,
     };
   });
+  const extras = selection.quote.lines.filter((line) => line.pricing === "each");
+  const lines = [...finishLines, ...extras];
   const total = Math.round(lines.reduce((sum, line) => sum + line.amount, 0) * 100) / 100;
   return { ...next, quote: { ...selection.quote, lines, total } };
 }

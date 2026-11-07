@@ -69,6 +69,14 @@ export default function HouseholdPage() {
             <p>天花：{selection.ceiling?.name || "未选"}</p>
             <p>地面：{selection.floor?.name || "未选"}</p>
             <p>墙面：{selection.wall?.name || "未选"}</p>
+            {(selection.lines || [])
+              .filter((line) => !["ceiling", "floor", "wall"].includes(line.part_id))
+              .map((line) => (
+                <p key={line.id}>
+                  {line.part_name}：{line.scheme_name || "未选"}
+                  {line.brand_tier === "import" ? "（进口）" : line.brand_tier === "domestic" ? "（国产）" : ""}
+                </p>
+              ))}
           </article>
         </div>
         <div className="stack">

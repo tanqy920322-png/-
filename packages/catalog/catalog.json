@@ -13,9 +13,15 @@
     "soft_cost_per_m2": 3500
   },
   "parts": [
-    {"id": "ceiling", "name": "天花", "sort_order": 1},
-    {"id": "floor", "name": "地面", "sort_order": 2},
-    {"id": "wall", "name": "墙面", "sort_order": 3}
+    {"id": "ceiling", "name": "天花", "sort_order": 1, "pricing": "area", "visual": true},
+    {"id": "wall", "name": "墙面", "sort_order": 2, "pricing": "area", "visual": true},
+    {"id": "floor", "name": "地面", "sort_order": 3, "pricing": "area", "visual": true},
+    {"id": "cabinetry", "name": "全屋定制", "sort_order": 4, "pricing": "each"},
+    {"id": "sanitary", "name": "洁具", "sort_order": 5, "pricing": "each"},
+    {"id": "entry_door", "name": "入户门", "sort_order": 6, "pricing": "each"},
+    {"id": "kitchen_appliance", "name": "厨房电器", "sort_order": 7, "pricing": "each"},
+    {"id": "lighting", "name": "灯具", "sort_order": 8, "pricing": "each", "allows_brand_tier": true},
+    {"id": "switch_socket", "name": "开关插座", "sort_order": 9, "pricing": "each", "allows_brand_tier": true}
   ],
   "unit_types": [
     {
@@ -182,5 +188,19 @@
         ]
       }
     }
+  ],
+  "sku_options": [
+    {"part_id": "cabinetry", "index": 1, "name": "客餐厅柜体示意", "summary": "平板柜门，按套示意，不进三维。", "unit_price": 6800},
+    {"part_id": "cabinetry", "index": 2, "name": "全屋柜体示意", "summary": "柜体做到各屋，按套示意。", "unit_price": 12800},
+    {"part_id": "sanitary", "index": 1, "name": "龙头花洒组", "summary": "厨卫龙头、菜盆、花洒示意套装。", "unit_price": 1680},
+    {"part_id": "sanitary", "index": 2, "name": "厨卫洁具组", "summary": "龙头、花洒和面盆一起配。", "unit_price": 3200},
+    {"part_id": "entry_door", "index": 1, "name": "国产装甲门", "summary": "甲级入户门示意。", "unit_price": 2680},
+    {"part_id": "entry_door", "index": 2, "name": "静音装甲门", "summary": "静音密封示意。", "unit_price": 4580},
+    {"part_id": "kitchen_appliance", "index": 1, "name": "烟灶套装", "summary": "烟机和炉灶。", "unit_price": 3990},
+    {"part_id": "kitchen_appliance", "index": 2, "name": "烟灶蒸烤套装", "summary": "烟机、炉灶、蒸烤箱。", "unit_price": 8990},
+    {"part_id": "lighting", "index": 1, "name": "客餐厅灯具组", "summary": "主灯示意，可选国产或进口档。", "unit_price": 860},
+    {"part_id": "lighting", "index": 2, "name": "全屋灯具组", "summary": "各屋灯具示意。", "unit_price": 2460},
+    {"part_id": "switch_socket", "index": 1, "name": "开关插座组", "summary": "常用点位示意，可选国产或进口档。", "unit_price": 480},
+    {"part_id": "switch_socket", "index": 2, "name": "全屋开关插座", "summary": "按户示意。", "unit_price": 1280}
   ]
 }

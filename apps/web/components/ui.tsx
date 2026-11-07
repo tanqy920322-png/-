@@ -45,7 +45,9 @@ export function QuoteLines({ quote }: { quote: Quote }) {
           </div>
           <div className="nums">
             <span>
-              {line.unit_price ?? "—"} 元/㎡ × {quote.finish_area_m2} ㎡
+              {line.pricing === "each"
+                ? `${line.unit_price ?? "—"} 元 × ${line.quantity ?? 1}${line.brand_tier === "import" ? " · 进口" : line.brand_tier === "domestic" ? " · 国产" : ""}`
+                : `${line.unit_price ?? "—"} 元/㎡ × ${quote.finish_area_m2} ㎡`}
             </span>
             <b>{yuan(line.amount)}</b>
           </div>

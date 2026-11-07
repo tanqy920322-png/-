@@ -102,6 +102,9 @@ class Part(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(40))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    pricing_mode: Mapped[str] = mapped_column(String(16), default="area")
+    allows_brand_tier: Mapped[bool] = mapped_column(Boolean, default=False)
+    visual: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class Style(Base):
@@ -120,7 +123,7 @@ class Scheme(Base):
     __table_args__ = (UniqueConstraint("style_id", "part_id", "scheme_index", name="uq_scheme_slot"),)
 
     id: Mapped[str] = mapped_column(String(80), primary_key=True)
-    style_id: Mapped[str] = mapped_column(ForeignKey("styles.id"), index=True)
+    style_id: Mapped[str | None] = mapped_column(ForeignKey("styles.id"), nullable=True, index=True)
     part_id: Mapped[str] = mapped_column(ForeignKey("parts.id"), index=True)
     scheme_index: Mapped[int] = mapped_column(Integer)
     name: Mapped[str] = mapped_column(String(80))
@@ -205,6 +208,35 @@ class CustomerSelection(Base):
     ceiling_scheme: Mapped[Scheme | None] = relationship(foreign_keys=[ceiling_scheme_id])
     floor_scheme: Mapped[Scheme | None] = relationship(foreign_keys=[floor_scheme_id])
     wall_scheme: Mapped[Scheme | None] = relationship(foreign_keys=[wall_scheme_id])
+    lines: Mapped[list["SelectionLine"]] = relationship(
+        back_populates="selection",
+        cascade="all, delete-orphan",
+    )
+
+
+class SelectionLine(Base):
+    """One chosen SKU or scheme for any of the nine categories.
+
+    Ceiling, floor, and wall are also mirrored on CustomerSelection so older
+    clients and sel_demo keep working. Other categories live only here.
+    """
+
+    __tablename__ = "selection_lines"
+    __table_args__ = (UniqueConstraint("selection_id", "part_id", "room_or_zone", name="uq_selection_line"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    selection_id: Mapped[str] = mapped_column(ForeignKey("customer_selections.id"), index=True)
+    part_id: Mapped[str] = mapped_column(ForeignKey("parts.id"), index=True)
+    room_or_zone: Mapped[str] = mapped_column(String(40), default="")
+    scheme_id: Mapped[str | None] = mapped_column(ForeignKey("schemes.id"), nullable=True)
+    procurement_item_id: Mapped[str | None] = mapped_column(ForeignKey("procurement_items.id"), nullable=True)
+    brand_tier: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    quantity: Mapped[float] = mapped_column(Numeric(8, 2), default=1)
+
+    selection: Mapped[CustomerSelection] = relationship(back_populates="lines")
+    part: Mapped[Part] = relationship()
+    scheme: Mapped[Scheme | None] = relationship()
+    procurement_item: Mapped[ProcurementItem | None] = relationship()
 
 
 class WorkerJob(Base):

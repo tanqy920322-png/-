@@ -15,6 +15,7 @@ from app.models import (
     Project,
     Room,
     Scheme,
+    SelectionLine,
     Style,
     UnitType,
 )
@@ -121,12 +122,19 @@ def _ensure_drawing(db: Session, project: Project, units: dict[str, UnitType], p
 
 def _upsert_catalog_prices(db: Session, catalog: dict) -> None:
     for part in catalog["parts"]:
+        fields = {
+            "name": part["name"],
+            "sort_order": part["sort_order"],
+            "pricing_mode": part.get("pricing", "area"),
+            "allows_brand_tier": bool(part.get("allows_brand_tier", False)),
+            "visual": bool(part.get("visual", False)),
+        }
         row = db.get(Part, part["id"])
         if row is None:
-            db.add(Part(id=part["id"], name=part["name"], sort_order=part["sort_order"]))
+            db.add(Part(id=part["id"], **fields))
         else:
-            row.name = part["name"]
-            row.sort_order = part["sort_order"]
+            for key, value in fields.items():
+                setattr(row, key, value)
     db.flush()
     for style_payload in catalog["styles"]:
         style = db.get(Style, style_payload["id"])
@@ -166,6 +174,24 @@ def _upsert_catalog_prices(db: Session, catalog: dict) -> None:
                 else:
                     for key, value in scheme_fields.items():
                         setattr(scheme, key, value)
+    for item in catalog.get("sku_options", []):
+        scheme_id = f"{item['part_id']}-{item['index']}"
+        scheme = db.get(Scheme, scheme_id)
+        scheme_fields = {
+            "style_id": None,
+            "part_id": item["part_id"],
+            "scheme_index": item["index"],
+            "name": item["name"],
+            "summary": item["summary"],
+            "unit_price": item["unit_price"],
+            "is_default": item["index"] == 1,
+            "material": {},
+        }
+        if scheme is None:
+            db.add(Scheme(id=scheme_id, **scheme_fields))
+        else:
+            for key, value in scheme_fields.items():
+                setattr(scheme, key, value)
     db.flush()
 
 
@@ -199,11 +225,10 @@ def _ensure_demo(db: Session, catalog: dict, project: Project, units: dict[str, 
         customer = Customer(id="cus_demo", phone=demo["phone"], display_name=demo["display_name"])
         db.add(customer)
         db.flush()
-    if db.get(CustomerSelection, demo["selection_id"]) is not None:
-        return
     style_id = demo["style_id"]
-    db.add(
-        CustomerSelection(
+    selection = db.get(CustomerSelection, demo["selection_id"])
+    if selection is None:
+        selection = CustomerSelection(
             id=demo["selection_id"],
             customer_id=customer.id,
             project_id=project.id,
@@ -214,7 +239,23 @@ def _ensure_demo(db: Session, catalog: dict, project: Project, units: dict[str, 
             wall_scheme_id=f"{style_id}-wall-1",
             status=demo.get("status", "draft"),
         )
-    )
+        db.add(selection)
+        db.flush()
+    for part_id in ("ceiling", "floor", "wall"):
+        scheme_id = f"{style_id}-{part_id}-1"
+        line_id = f"{selection.id}-{part_id}"
+        line = db.get(SelectionLine, line_id)
+        if line is None:
+            db.add(
+                SelectionLine(
+                    id=line_id,
+                    selection_id=selection.id,
+                    part_id=part_id,
+                    room_or_zone="",
+                    scheme_id=getattr(selection, f"{part_id}_scheme_id") or scheme_id,
+                    quantity=1,
+                )
+            )
 
 
 def seed(db: Session) -> None:

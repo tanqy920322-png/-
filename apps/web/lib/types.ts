@@ -8,7 +8,7 @@ export type MaterialSpec = {
 
 export type Scheme = {
   id: string;
-  style_id: string;
+  style_id: string | null;
   part_id: string;
   index: number;
   name: string;
@@ -97,6 +97,31 @@ export type QuoteLine = {
   unit_price: number | null;
   area_m2: number;
   amount: number;
+  pricing?: "area" | "each";
+  quantity?: number;
+  brand_tier?: "domestic" | "import" | null;
+};
+
+export type CatalogPart = {
+  id: string;
+  name: string;
+  sort_order: number;
+  pricing: "area" | "each";
+  visual: boolean;
+  allows_brand_tier: boolean;
+  schemes: Scheme[];
+};
+
+export type SelectionLine = {
+  id: string;
+  part_id: string;
+  part_name: string;
+  room_or_zone: string;
+  scheme_id: string | null;
+  scheme_name: string | null;
+  procurement_item_id: string | null;
+  brand_tier: "domestic" | "import" | null;
+  quantity: number;
 };
 
 export type Quote = {
@@ -138,6 +163,8 @@ export type Selection = {
   ceiling: Scheme | null;
   floor: Scheme | null;
   wall: Scheme | null;
+  parts: CatalogPart[];
+  lines: SelectionLine[];
   quote: Quote;
   created_at: string;
   updated_at: string;

@@ -54,9 +54,19 @@ def render_quote_pdf(selection: dict) -> bytes:
     if not quote["lines"]:
         write("尚未选择风格，暂无部位报价。")
     for line in quote["lines"]:
-        unit_price = "—" if line["unit_price"] is None else f"{Decimal(str(line['unit_price'])):,.2f} 元/㎡"
-        write(f"{line['part_name']}  {line['scheme_name'] or '未选'}")
-        write(f"    {unit_price} × {_area(line['area_m2'])} = {_yuan(line['amount'])}", 11, 6)
+        if line.get("pricing") == "each":
+            unit_price = "—" if line["unit_price"] is None else f"{Decimal(str(line['unit_price'])):,.2f} 元"
+            qty = Decimal(str(line.get("quantity") or 1))
+            basis = f"{unit_price} × {qty:f}".rstrip("0").rstrip(".")
+        else:
+            unit_price = "—" if line["unit_price"] is None else f"{Decimal(str(line['unit_price'])):,.2f} 元/㎡"
+            basis = f"{unit_price} × {_area(line['area_m2'])}"
+        tier = {"import": "进口", "domestic": "国产"}.get(line.get("brand_tier") or "", "")
+        name = line["scheme_name"] or "未选"
+        if tier:
+            name = f"{name}（{tier}）"
+        write(f"{line['part_name']}  {name}")
+        write(f"    {basis} = {_yuan(line['amount'])}", 11, 6)
     pdf.ln(1)
     write(f"部位合计：{_yuan(quote['total'])}", 13, 8)
     pdf.ln(1)

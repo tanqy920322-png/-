@@ -20,7 +20,7 @@ def test_xlsx_row_category_overrides_table_category():
     sheet.append(["橱柜", "地柜延米", 1800, "CAB-001"])
     buffer = io.BytesIO()
     workbook.save(buffer)
-    rows = parse_price_table("cabinet.xlsx", buffer.getvalue(), "general")
-    assert rows[0]["category"] == "cabinet"
+    rows = parse_price_table("cabinet.xlsx", buffer.getvalue(), "sanitary")
+    assert rows[0]["category"] == "cabinetry"
     assert rows[0]["sku_code"] == "CAB-001"
     assert rows[0]["unit_price"] == __import__("decimal").Decimal("1800.00")

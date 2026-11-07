@@ -125,7 +125,7 @@ def test_admin_publish_import_upload_and_exports(client):
         files={"file": ("sample_sanitary.csv", SAMPLE.read_bytes(), "text/csv")},
     )
     assert imported.status_code == 200
-    assert imported.json()["row_count"] == 5
+    assert imported.json()["row_count"] == 8
     assert imported.json()["items"][0]["category"] == "sanitary"
 
     token = login_customer(client, "13900002222")
@@ -176,3 +176,55 @@ def test_admin_publish_import_upload_and_exports(client):
     assert demo.status_code == 200
     assert demo.json()["style"]["id"] == "light_luxury"
     assert demo.json()["quote"]["total"] == 33511.8
+    assert {line["part_id"] for line in demo.json()["lines"]} >= {"ceiling", "floor", "wall"}
+
+
+def test_nine_parts_and_addon_quote(client):
+    parts = client.get("/api/parts").json()
+    assert [item["id"] for item in parts] == [
+        "ceiling",
+        "wall",
+        "floor",
+        "cabinetry",
+        "sanitary",
+        "entry_door",
+        "kitchen_appliance",
+        "lighting",
+        "switch_socket",
+    ]
+    categories = {item["id"] for item in client.get("/api/meta").json()["procurement_categories"]}
+    assert {"sanitary", "lighting", "entry_door", "kitchen_appliance"} <= categories
+    token = login_customer(client, "13900003333")
+    selection = client.post(
+        "/api/selections",
+        headers=auth(token),
+        json={"project_code": "GZ2019-003", "unit_type_id": "gz2019-003-a"},
+    ).json()
+    styled = client.patch(
+        f"/api/selections/{selection['id']}",
+        headers=auth(token),
+        json={"style_id": "cream"},
+    ).json()
+    assert styled["quote"]["total"] == 26239.8
+    saved = client.patch(
+        f"/api/selections/{selection['id']}",
+        headers=auth(token),
+        json={
+            "lines": [
+                {"part_id": "sanitary", "scheme_id": "sanitary-1"},
+                {"part_id": "lighting", "scheme_id": "lighting-1", "brand_tier": "import"},
+            ]
+        },
+    )
+    assert saved.status_code == 200
+    body = saved.json()
+    assert body["ceiling"]["id"] == "cream-ceiling-1"
+    assert body["quote"]["total"] == 28779.8
+    extra = {line["part_id"]: line for line in body["quote"]["lines"]}
+    assert extra["sanitary"]["amount"] == 1680
+    assert extra["sanitary"]["pricing"] == "each"
+    assert extra["lighting"]["brand_tier"] == "import"
+    assert extra["lighting"]["amount"] == 860
+    stored = {line["part_id"]: line for line in body["lines"]}
+    assert stored["lighting"]["brand_tier"] == "import"
+    assert stored["sanitary"]["scheme_id"] == "sanitary-1"

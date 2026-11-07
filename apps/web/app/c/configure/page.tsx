@@ -37,6 +37,26 @@ export default function ConfigurePage() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "方案加载失败"));
   }, [token, sid, router]);
 
+  async function saveLine(partId: string, schemeId: string | null, brandTier: "domestic" | "import" | null) {
+    if (!token || !sid || !schemeId) return;
+    setSaving(true);
+    setError("");
+    try {
+      const saved = await api<Selection>(`/api/selections/${sid}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({
+          lines: [{ part_id: partId, scheme_id: schemeId, brand_tier: brandTier }],
+        }),
+      });
+      setSelection(saved);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function choose(scheme: Scheme) {
     if (!selection || !token || !sid) return;
     const previous = selection;
@@ -106,6 +126,46 @@ export default function ConfigurePage() {
               <span className="muted">{scheme.summary}</span>
             </button>
           ))}
+          <section className="stack">
+            <h2 style={{ margin: "8px 0 0", fontSize: 16 }}>其他类目</h2>
+            <p className="fine">这六类计入报价，三维仍只表现天花、地面和墙面。</p>
+            {(selection.parts || []).filter((item) => !item.visual).map((item) => {
+              const current = (selection.lines || []).find((line) => line.part_id === item.id);
+              return (
+                <div key={item.id} className="card stack">
+                  <strong>{item.name}</strong>
+                  {item.allows_brand_tier ? (
+                    <label className="field">
+                      品牌档
+                      <select
+                        value={current?.brand_tier || "domestic"}
+                        onChange={(event) =>
+                          saveLine(item.id, current?.scheme_id || item.schemes[0]?.id || null, event.target.value as "domestic" | "import")
+                        }
+                      >
+                        <option value="domestic">国产</option>
+                        <option value="import">进口</option>
+                      </select>
+                    </label>
+                  ) : null}
+                  {item.schemes.map((scheme) => (
+                    <button
+                      key={scheme.id}
+                      type="button"
+                      className={current?.scheme_id === scheme.id ? "scheme on" : "scheme"}
+                      onClick={() => saveLine(scheme.part_id, scheme.id, current?.brand_tier || (item.allows_brand_tier ? "domestic" : null))}
+                    >
+                      <span className="scheme-head">
+                        <strong>{scheme.name}</strong>
+                        <b>{scheme.unit_price} 元</b>
+                      </span>
+                      <span className="muted">{scheme.summary}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </section>
           <QuoteLines quote={selection.quote} />
           <div className="sticky-total">
             <div>

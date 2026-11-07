@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.deps import ActorDep, CustomerDep, Db
-from app.models import CustomerSelection, Project, Scheme, Style, UnitType
+from app.models import CustomerSelection, Part, ProcurementItem, Project, Scheme, SelectionLine, Style, UnitType
 from app.services.access import load_readable_selection
 from app.services.ids import new_id
 from app.services.serialize import selection_dict, selection_list_item
@@ -18,15 +18,97 @@ class SelectionCreate(BaseModel):
     unit_type_id: str
 
 
+class LineInput(BaseModel):
+    part_id: str
+    scheme_id: str | None = None
+    procurement_item_id: str | None = None
+    room_or_zone: str = ""
+    brand_tier: str | None = None
+    quantity: float = 1
+
+
 class SelectionUpdate(BaseModel):
     style_id: str | None = None
     ceiling_scheme_id: str | None = None
     floor_scheme_id: str | None = None
     wall_scheme_id: str | None = None
+    lines: list[LineInput] | None = None
+
+
+VISUAL_PARTS = ("ceiling", "floor", "wall")
+BRAND_TIERS = {"domestic", "import"}
 
 
 def _touch(selection: CustomerSelection) -> None:
     selection.updated_at = datetime.now(timezone.utc)
+
+
+def _upsert_line(
+    db: Db,
+    selection: CustomerSelection,
+    *,
+    part_id: str,
+    scheme_id: str | None,
+    procurement_item_id: str | None,
+    room_or_zone: str,
+    brand_tier: str | None,
+    quantity: float,
+) -> None:
+    zone = (room_or_zone or "").strip()[:40]
+    existing = db.scalar(
+        select(SelectionLine).where(
+            SelectionLine.selection_id == selection.id,
+            SelectionLine.part_id == part_id,
+            SelectionLine.room_or_zone == zone,
+        )
+    )
+    if scheme_id is None and procurement_item_id is None:
+        if existing is not None:
+            db.delete(existing)
+        if part_id in VISUAL_PARTS and zone == "":
+            setattr(selection, f"{part_id}_scheme_id", None)
+        return
+    if existing is None:
+        existing = SelectionLine(
+            id=new_id("line"),
+            selection_id=selection.id,
+            part_id=part_id,
+            room_or_zone=zone,
+        )
+        db.add(existing)
+    existing.scheme_id = scheme_id
+    existing.procurement_item_id = procurement_item_id
+    existing.brand_tier = brand_tier
+    existing.quantity = quantity
+    if part_id in VISUAL_PARTS and zone == "":
+        setattr(selection, f"{part_id}_scheme_id", scheme_id)
+
+
+def _validate_line(db: Db, selection: CustomerSelection, line: LineInput) -> None:
+    part = db.get(Part, line.part_id)
+    if part is None:
+        raise HTTPException(status_code=400, detail="部位不存在")
+    if line.quantity <= 0:
+        raise HTTPException(status_code=400, detail="数量需要大于 0")
+    if line.brand_tier is not None and line.brand_tier not in BRAND_TIERS:
+        raise HTTPException(status_code=400, detail="品牌档位只能是国产或进口")
+    if line.brand_tier and not part.allows_brand_tier:
+        raise HTTPException(status_code=400, detail="这个类目不区分进口和国产")
+    if line.scheme_id:
+        scheme = db.get(Scheme, line.scheme_id)
+        if scheme is None or scheme.part_id != part.id:
+            raise HTTPException(status_code=400, detail="方案与部位不匹配")
+        if part.visual:
+            if selection.style_id is None:
+                raise HTTPException(status_code=400, detail="请先选择风格")
+            if scheme.style_id != selection.style_id:
+                raise HTTPException(status_code=400, detail="方案与当前风格或部位不匹配")
+        elif scheme.style_id is not None:
+            raise HTTPException(status_code=400, detail="这个类目不跟随风格方案")
+    if line.procurement_item_id:
+        item = db.get(ProcurementItem, line.procurement_item_id)
+        if item is None or item.category != part.id:
+            raise HTTPException(status_code=400, detail="价表物料与类目不匹配")
 
 
 def _apply_update(db: Db, selection: CustomerSelection, body: SelectionUpdate) -> None:
@@ -36,11 +118,7 @@ def _apply_update(db: Db, selection: CustomerSelection, body: SelectionUpdate) -
         if style is None:
             raise HTTPException(status_code=400, detail="风格不存在")
         selection.style_id = style.id
-        for part_id, attr in (
-            ("ceiling", "ceiling_scheme_id"),
-            ("floor", "floor_scheme_id"),
-            ("wall", "wall_scheme_id"),
-        ):
+        for part_id in VISUAL_PARTS:
             scheme = db.scalar(
                 select(Scheme).where(
                     Scheme.style_id == style.id,
@@ -50,23 +128,56 @@ def _apply_update(db: Db, selection: CustomerSelection, body: SelectionUpdate) -
             )
             if scheme is None:
                 raise HTTPException(status_code=400, detail="该风格缺少默认方案")
-            setattr(selection, attr, scheme.id)
+            setattr(selection, f"{part_id}_scheme_id", scheme.id)
+            _upsert_line(
+                db,
+                selection,
+                part_id=part_id,
+                scheme_id=scheme.id,
+                procurement_item_id=None,
+                room_or_zone="",
+                brand_tier=None,
+                quantity=1,
+            )
         changed = True
     scheme_updates = (
-        ("ceiling", body.ceiling_scheme_id, "ceiling_scheme_id"),
-        ("floor", body.floor_scheme_id, "floor_scheme_id"),
-        ("wall", body.wall_scheme_id, "wall_scheme_id"),
+        ("ceiling", body.ceiling_scheme_id),
+        ("floor", body.floor_scheme_id),
+        ("wall", body.wall_scheme_id),
     )
     if any(item[1] for item in scheme_updates):
         if selection.style_id is None:
             raise HTTPException(status_code=400, detail="请先选择风格")
-        for part_id, incoming, attr in scheme_updates:
+        for part_id, incoming in scheme_updates:
             if not incoming:
                 continue
             scheme = db.get(Scheme, incoming)
             if scheme is None or scheme.style_id != selection.style_id or scheme.part_id != part_id:
                 raise HTTPException(status_code=400, detail="方案与当前风格或部位不匹配")
-            setattr(selection, attr, scheme.id)
+            _upsert_line(
+                db,
+                selection,
+                part_id=part_id,
+                scheme_id=scheme.id,
+                procurement_item_id=None,
+                room_or_zone="",
+                brand_tier=None,
+                quantity=1,
+            )
+            changed = True
+    if body.lines:
+        for line in body.lines:
+            _validate_line(db, selection, line)
+            _upsert_line(
+                db,
+                selection,
+                part_id=line.part_id,
+                scheme_id=line.scheme_id,
+                procurement_item_id=line.procurement_item_id,
+                room_or_zone=line.room_or_zone,
+                brand_tier=line.brand_tier,
+                quantity=line.quantity,
+            )
             changed = True
     if changed:
         if selection.status == "submitted":

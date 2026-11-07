@@ -54,8 +54,8 @@ export default function PricesPage() {
     <div className="stack">
       <h1>集采价表</h1>
       <p className="muted">
-        现在先导入一张表。品类已经按马桶、洁具、电器、橱柜和综合拆开，后面可以一张品类一个 Excel，不必改客户报价。
-        客户看到的部位价格来自风格方案，不读这张集采表。
+        价表品类与九类选配对齐：天花、墙面、地面、全屋定制、洁具、入户门、厨房电器、灯具、开关插座。
+        表内「品类」列可以覆盖整表品类。客户报价仍来自所选方案，不自动读取集采价。
       </p>
       {error ? <p className="error">{error}</p> : null}
       <form

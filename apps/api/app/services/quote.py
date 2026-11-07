@@ -29,6 +29,9 @@ class PricedPart:
     scheme_id: str | None
     scheme_name: str | None
     unit_price: Decimal | None
+    pricing: str = "area"
+    quantity: Decimal = Decimal("1")
+    brand_tier: str | None = None
 
 
 @dataclass
@@ -40,6 +43,9 @@ class QuoteLine:
     unit_price: Decimal | None
     area_m2: Decimal
     amount: Decimal
+    pricing: str = "area"
+    quantity: Decimal = Decimal("1")
+    brand_tier: str | None = None
 
 
 @dataclass
@@ -98,7 +104,16 @@ def compute_quote(
     lines: list[QuoteLine] = []
     for part in parts:
         unit_price = None if part.unit_price is None else money(as_decimal(part.unit_price))
-        amount = Decimal("0.00") if unit_price is None else money(unit_price * area)
+        quantity = money(as_decimal(part.quantity))
+        if unit_price is None:
+            amount = Decimal("0.00")
+            basis_area = area
+        elif part.pricing == "each":
+            amount = money(unit_price * quantity)
+            basis_area = Decimal("0.00")
+        else:
+            amount = money(unit_price * area)
+            basis_area = area
         lines.append(
             QuoteLine(
                 part_id=part.part_id,
@@ -106,8 +121,11 @@ def compute_quote(
                 scheme_id=part.scheme_id,
                 scheme_name=part.scheme_name,
                 unit_price=unit_price,
-                area_m2=area,
+                area_m2=basis_area,
                 amount=amount,
+                pricing=part.pricing,
+                quantity=quantity,
+                brand_tier=part.brand_tier,
             )
         )
     total = money(sum((line.amount for line in lines), Decimal("0")))

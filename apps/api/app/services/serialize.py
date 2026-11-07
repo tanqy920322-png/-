@@ -4,7 +4,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.constants import CATEGORY_LABELS, KIND_LABELS
-from app.models import Asset, Part, Project, Scheme, Style, UnitType
+from app.models import Asset, Part, Project, Scheme, SelectionLine, Style, UnitType
 from app.services.quote import (
     PricedPart,
     QuoteResult,
@@ -52,6 +52,8 @@ def style_dict(db: Session, style: Style) -> dict:
     grouped = []
     for part in parts:
         items = sorted((item for item in schemes if item.part_id == part.id), key=lambda item: item.scheme_index)
+        if not items:
+            continue
         grouped.append({"id": part.id, "name": part.name, "schemes": [scheme_dict(item) for item in items]})
     return {
         "id": style.id,
@@ -156,12 +158,21 @@ def project_dict(db: Session, project: Project) -> dict:
     return data
 
 
+def _line_price(line: SelectionLine):
+    if line.scheme is not None:
+        return as_decimal(line.scheme.unit_price), line.scheme.id, line.scheme.name
+    if line.procurement_item is not None:
+        return as_decimal(line.procurement_item.unit_price), None, line.procurement_item.name
+    return None, None, None
+
+
 def quote_for_selection(db: Session, selection) -> QuoteResult:
     unit = selection.unit
     rooms = [
         RoomArea(room.name, as_decimal(room.area_m2), bool(room.counts_toward_finish))
         for room in unit.rooms
     ]
+    part_rows = {part.id: part for part in db.scalars(select(Part)).all()}
     parts: list[PricedPart] = []
     if selection.style_id:
         named = {
@@ -169,7 +180,6 @@ def quote_for_selection(db: Session, selection) -> QuoteResult:
             "floor": selection.floor_scheme,
             "wall": selection.wall_scheme,
         }
-        part_rows = {part.id: part for part in db.scalars(select(Part)).all()}
         for part_id in ("ceiling", "floor", "wall"):
             scheme = named[part_id]
             part = part_rows.get(part_id)
@@ -180,8 +190,28 @@ def quote_for_selection(db: Session, selection) -> QuoteResult:
                     scheme_id=scheme.id if scheme else None,
                     scheme_name=scheme.name if scheme else None,
                     unit_price=None if scheme is None else as_decimal(scheme.unit_price),
+                    pricing="area",
                 )
             )
+    for line in selection.lines or []:
+        part = part_rows.get(line.part_id)
+        if part is None or part.pricing_mode == "area":
+            continue
+        unit_price, scheme_id, scheme_name = _line_price(line)
+        if unit_price is None:
+            continue
+        parts.append(
+            PricedPart(
+                part_id=line.part_id,
+                part_name=part.name,
+                scheme_id=scheme_id or line.scheme_id,
+                scheme_name=scheme_name,
+                unit_price=unit_price,
+                pricing="each",
+                quantity=as_decimal(line.quantity or 1),
+                brand_tier=line.brand_tier,
+            )
+        )
     return compute_quote(
         rooms=rooms,
         building_area=as_decimal(unit.building_area_m2),
@@ -207,11 +237,51 @@ def quote_dict(result: QuoteResult) -> dict:
                 "unit_price": None if line.unit_price is None else num(line.unit_price),
                 "area_m2": num(line.area_m2),
                 "amount": num(line.amount),
+                "pricing": line.pricing,
+                "quantity": num(line.quantity),
+                "brand_tier": line.brand_tier,
             }
             for line in result.lines
         ],
         "total": num(result.total),
         "reference": {key: num(value) if key != "note" else value for key, value in result.reference.items()},
+    }
+
+
+def part_catalog(db: Session, style_id: str | None) -> list[dict]:
+    parts = db.scalars(select(Part).order_by(Part.sort_order, Part.id)).all()
+    rows = []
+    for part in parts:
+        if part.visual:
+            query = select(Scheme).where(Scheme.part_id == part.id, Scheme.style_id == style_id)
+            schemes = [] if style_id is None else db.scalars(query).all()
+        else:
+            schemes = db.scalars(select(Scheme).where(Scheme.part_id == part.id, Scheme.style_id.is_(None))).all()
+        rows.append(
+            {
+                "id": part.id,
+                "name": part.name,
+                "sort_order": part.sort_order,
+                "pricing": part.pricing_mode,
+                "visual": bool(part.visual),
+                "allows_brand_tier": bool(part.allows_brand_tier),
+                "schemes": [scheme_dict(item) for item in sorted(schemes, key=lambda item: item.scheme_index)],
+            }
+        )
+    return rows
+
+
+def line_dict(line: SelectionLine) -> dict:
+    return {
+        "id": line.id,
+        "part_id": line.part_id,
+        "part_name": line.part.name if line.part is not None else line.part_id,
+        "room_or_zone": line.room_or_zone or "",
+        "scheme_id": line.scheme_id,
+        "scheme_name": None if line.scheme is None else line.scheme.name,
+        "procurement_item_id": line.procurement_item_id,
+        "brand_tier": line.brand_tier,
+        "quantity": num(line.quantity or 1),
     }
 
 
@@ -228,6 +298,8 @@ def selection_dict(db: Session, selection) -> dict:
         "ceiling": None if selection.ceiling_scheme is None else scheme_dict(selection.ceiling_scheme),
         "floor": None if selection.floor_scheme is None else scheme_dict(selection.floor_scheme),
         "wall": None if selection.wall_scheme is None else scheme_dict(selection.wall_scheme),
+        "parts": part_catalog(db, selection.style_id),
+        "lines": [line_dict(line) for line in sorted(selection.lines or [], key=lambda item: item.part_id)],
         "quote": quote,
         "created_at": iso(selection.created_at),
         "updated_at": iso(selection.updated_at),

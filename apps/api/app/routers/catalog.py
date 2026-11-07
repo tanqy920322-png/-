@@ -3,7 +3,7 @@ from sqlalchemy import select
 
 from app.constants import ASSET_KINDS, PROCUREMENT_CATEGORIES
 from app.deps import Db
-from app.models import Project, Style
+from app.models import Part, Project, Style
 from app.services.serialize import project_dict, style_dict
 
 router = APIRouter(tags=["catalog"])
@@ -19,6 +19,22 @@ def meta():
             {"id": "submitted", "name": "已提交"},
         ],
     }
+
+
+@router.get("/api/parts")
+def list_parts(db: Db):
+    rows = db.scalars(select(Part).order_by(Part.sort_order, Part.id)).all()
+    return [
+        {
+            "id": part.id,
+            "name": part.name,
+            "sort_order": part.sort_order,
+            "pricing": part.pricing_mode,
+            "visual": bool(part.visual),
+            "allows_brand_tier": bool(part.allows_brand_tier),
+        }
+        for part in rows
+    ]
 
 
 @router.get("/api/projects")

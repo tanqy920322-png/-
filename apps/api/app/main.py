@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.config import get_settings
-from app.database import get_engine, get_session_factory
+from app.database import ensure_schema, get_engine, get_session_factory
 from app.models import Base
 from app.routers import admin, ai, assets, auth, catalog, exports, selections
 from app.seed import seed
@@ -20,6 +20,7 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     engine = get_engine()
     Base.metadata.create_all(engine)
+    ensure_schema(engine)
     if settings.auto_seed:
         db = get_session_factory()()
         try:

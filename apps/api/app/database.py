@@ -35,6 +35,29 @@ def get_engine():
     return engine
 
 
+def ensure_schema(engine) -> None:
+    """Add columns introduced after the first scaffold without a migration tool."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    statements: list[str] = []
+    if "parts" in tables:
+        columns = {column["name"] for column in inspector.get_columns("parts")}
+        if "pricing_mode" not in columns:
+            statements.append("ALTER TABLE parts ADD COLUMN pricing_mode VARCHAR(16) DEFAULT 'area'")
+        if "allows_brand_tier" not in columns:
+            statements.append("ALTER TABLE parts ADD COLUMN allows_brand_tier BOOLEAN DEFAULT FALSE")
+        if "visual" not in columns:
+            statements.append("ALTER TABLE parts ADD COLUMN visual BOOLEAN DEFAULT FALSE")
+    if statements or ("schemes" in tables and engine.dialect.name == "postgresql"):
+        with engine.begin() as connection:
+            for statement in statements:
+                connection.execute(text(statement))
+            if "schemes" in tables and engine.dialect.name == "postgresql":
+                connection.execute(text("ALTER TABLE schemes ALTER COLUMN style_id DROP NOT NULL"))
+
+
 def get_session_factory():
     get_engine()
     return _session_factory
