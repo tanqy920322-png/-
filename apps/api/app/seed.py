@@ -1,5 +1,6 @@
 import json
 import logging
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 from sqlalchemy import delete, select
@@ -15,6 +16,7 @@ from app.models import (
     Project,
     Room,
     Scheme,
+    SchemeItem,
     SelectionLine,
     Style,
     UnitType,
@@ -193,6 +195,75 @@ def _upsert_catalog_prices(db: Session, catalog: dict) -> None:
             for key, value in scheme_fields.items():
                 setattr(scheme, key, value)
     db.flush()
+    _seed_scheme_items(db)
+    db.flush()
+
+
+# Fixed extras under finish schemes. Not included until the customer opts in.
+FINISH_KITS: dict[str, list[tuple[str, str, str, int]]] = {
+    "ceiling": [("slot", "灯槽灯带", "160", 1), ("downlight", "筒灯点位", "48", 6)],
+    "wall": [("panel", "背景墙板", "860", 1), ("trim", "造型线", "220", 1)],
+    "floor": [("border", "波打线", "96", 1), ("sill", "过门石", "180", 1)],
+}
+
+# Shares of the scheme price. Entry door is a one-piece kit on purpose.
+EACH_SPLITS: dict[str, list[tuple[str, str, str]]] = {
+    "cabinetry": [("base", "地柜", "0.62"), ("upper", "吊柜", "0.38")],
+    "sanitary": [("faucet", "龙头", "0.37"), ("basin", "菜盆", "0.28"), ("shower", "花洒", "0.35")],
+    "entry_door": [("leaf", "门扇", "1")],
+    "kitchen_appliance": [("hood", "烟机", "0.62"), ("hob", "炉灶", "0.38")],
+    "lighting": [("main", "主灯", "0.65"), ("spot", "筒灯", "0.35")],
+    "switch_socket": [("switch", "开关", "0.45"), ("socket", "插座", "0.55")],
+}
+
+
+def _split_prices(total: Decimal, fractions: list[Decimal]) -> list[Decimal]:
+    amounts: list[Decimal] = []
+    running = Decimal("0.00")
+    for index, fraction in enumerate(fractions):
+        if index == len(fractions) - 1:
+            amounts.append((total - running).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        else:
+            piece = (total * fraction).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            amounts.append(piece)
+            running += piece
+    return amounts
+
+
+def _seed_scheme_items(db: Session) -> None:
+    schemes = db.scalars(select(Scheme)).all()
+    for scheme in schemes:
+        wanted: list[tuple[str, str, Decimal, int]] = []
+        if scheme.part_id in FINISH_KITS:
+            for slug, name, price, qty in FINISH_KITS[scheme.part_id]:
+                wanted.append((slug, name, Decimal(price), qty))
+        elif scheme.part_id in EACH_SPLITS:
+            pieces = EACH_SPLITS[scheme.part_id]
+            amounts = _split_prices(Decimal(str(scheme.unit_price)), [Decimal(piece[2]) for piece in pieces])
+            for (slug, name, _), amount in zip(pieces, amounts):
+                wanted.append((slug, name, amount, 1))
+        else:
+            continue
+        keep = set()
+        for sort_order, (slug, name, price, qty) in enumerate(wanted):
+            item_id = f"{scheme.id}-{slug}"
+            keep.add(item_id)
+            row = db.get(SchemeItem, item_id)
+            fields = {
+                "scheme_id": scheme.id,
+                "name": name,
+                "unit_price": price,
+                "default_quantity": qty,
+                "sort_order": sort_order,
+            }
+            if row is None:
+                db.add(SchemeItem(id=item_id, **fields))
+            else:
+                for key, value in fields.items():
+                    setattr(row, key, value)
+        for stale in list(scheme.items or []):
+            if stale.id not in keep:
+                db.delete(stale)
 
 
 def _ensure_sample_prices(db: Session, project: Project) -> None:

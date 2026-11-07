@@ -131,6 +131,26 @@ class Scheme(Base):
     unit_price: Mapped[float] = mapped_column(Numeric(12, 2))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     material: Mapped[dict] = mapped_column(JSON, default=dict)
+    items: Mapped[list["SchemeItem"]] = relationship(
+        back_populates="scheme",
+        cascade="all, delete-orphan",
+        order_by="SchemeItem.sort_order",
+    )
+
+
+class SchemeItem(Base):
+    """A piece inside a scheme. Every category uses the same kit: brand, include, quantity."""
+
+    __tablename__ = "scheme_items"
+
+    id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    scheme_id: Mapped[str] = mapped_column(ForeignKey("schemes.id"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    unit_price: Mapped[float] = mapped_column(Numeric(12, 2))
+    default_quantity: Mapped[float] = mapped_column(Numeric(8, 2), default=1)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    scheme: Mapped[Scheme] = relationship(back_populates="items")
 
 
 class ProcurementTable(Base):
@@ -237,6 +257,25 @@ class SelectionLine(Base):
     part: Mapped[Part] = relationship()
     scheme: Mapped[Scheme | None] = relationship()
     procurement_item: Mapped[ProcurementItem | None] = relationship()
+    picks: Mapped[list["SelectionItemPick"]] = relationship(
+        back_populates="line",
+        cascade="all, delete-orphan",
+    )
+
+
+class SelectionItemPick(Base):
+    __tablename__ = "selection_item_picks"
+    __table_args__ = (UniqueConstraint("selection_line_id", "scheme_item_id", name="uq_line_item"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    selection_line_id: Mapped[str] = mapped_column(ForeignKey("selection_lines.id"), index=True)
+    scheme_item_id: Mapped[str] = mapped_column(ForeignKey("scheme_items.id"), index=True)
+    included: Mapped[bool] = mapped_column(Boolean, default=False)
+    quantity: Mapped[float] = mapped_column(Numeric(8, 2), default=1)
+    brand_tier: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+    line: Mapped[SelectionLine] = relationship(back_populates="picks")
+    item: Mapped[SchemeItem] = relationship()
 
 
 class WorkerJob(Base):

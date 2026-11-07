@@ -6,6 +6,14 @@ export type MaterialSpec = {
   feature: string;
 };
 
+export type SchemeItem = {
+  id: string;
+  name: string;
+  unit_price: number;
+  default_quantity: number;
+  sort_order: number;
+};
+
 export type Scheme = {
   id: string;
   style_id: string | null;
@@ -15,7 +23,18 @@ export type Scheme = {
   summary: string;
   unit_price: number;
   is_default: boolean;
+  items?: SchemeItem[];
   material: MaterialSpec;
+};
+
+export type ItemPick = {
+  id: string;
+  scheme_item_id: string;
+  name: string;
+  unit_price: number;
+  included: boolean;
+  quantity: number;
+  brand_tier: "domestic" | "import" | null;
 };
 
 export type PartGroup = {
@@ -122,6 +141,7 @@ export type SelectionLine = {
   procurement_item_id: string | null;
   brand_tier: "domestic" | "import" | null;
   quantity: number;
+  picks?: ItemPick[];
 };
 
 export type Quote = {

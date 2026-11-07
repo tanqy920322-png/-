@@ -100,6 +100,17 @@ function repeats(role: "floor" | "wall" | "ceiling" | "feature", family: Family,
   return role === "ceiling" ? [1.6, 2.2] : [1.8, 2.4];
 }
 
+function contrastColor(hex: string): THREE.Color {
+  const color = new THREE.Color(hex);
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  hsl.s = Math.min(1, hsl.s * 1.45 + 0.04);
+  if (hsl.l >= 0.72) hsl.l = Math.min(0.9, hsl.l + 0.03);
+  else if (hsl.l <= 0.55) hsl.l = Math.max(0.1, hsl.l - 0.14);
+  color.setHSL(hsl.h, hsl.s, hsl.l);
+  return color;
+}
+
 function releaseOwned(material: THREE.MeshStandardMaterial) {
   const owned = material.userData.ownedMaps as THREE.Texture[] | undefined;
   owned?.forEach((texture) => texture.dispose());
@@ -114,8 +125,9 @@ export function applyFinish(
 ) {
   const family = role === "floor" ? floorFamily(spec.feature) : role === "feature" ? featureFamily(spec.feature) : "paint";
   const source = library[family];
-  material.color.set(spec.color);
-  material.metalness = spec.feature === "mirror_edge" ? 0.72 : spec.feature === "metal_grout" ? 0.18 : spec.metalness;
+  material.color.copy(contrastColor(spec.color));
+  material.metalness =
+    spec.feature === "mirror_edge" ? 0.94 : spec.feature === "metal_grout" ? 0.42 : spec.feature === "gloss_panel" ? 0.22 : spec.metalness;
   if (!source) {
     material.roughness = spec.roughness;
     material.needsUpdate = true;
@@ -138,15 +150,18 @@ export function applyFinish(
   material.normalMap = normal;
   material.roughness =
     spec.feature === "mirror_edge"
-      ? 0.22
+      ? 0.07
       : spec.feature === "gloss" || spec.feature === "gloss_panel"
-        ? 0.32
+        ? 0.18
         : spec.feature === "tile" || spec.feature === "metal_grout"
-          ? 0.5
+          ? 0.28
           : spec.feature === "wood" || spec.feature === "parquet" || spec.feature === "veneer" || spec.feature === "wainscot"
-            ? 0.85
-            : 1;
-  const normalScale = family === "paint" ? 0.18 : family === "stone" ? 0.35 : family === "tile" || family === "grout" ? 0.55 : 0.7;
+            ? 0.78
+            : spec.feature === "stone" || spec.feature === "stone_full" || spec.feature === "marble_border" || spec.feature === "sintered"
+              ? 0.42
+              : 1;
+  material.envMapIntensity = material.metalness > 0.5 || material.roughness < 0.35 ? 1.6 : 0.35;
+  const normalScale = family === "paint" ? 0.12 : family === "stone" ? 0.85 : family === "tile" || family === "grout" ? 1.15 : family === "parquet" ? 1.05 : 1.25;
   material.normalScale.set(normalScale, normalScale);
   material.needsUpdate = true;
 }

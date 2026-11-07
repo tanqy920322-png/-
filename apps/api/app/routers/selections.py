@@ -5,7 +5,18 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.deps import ActorDep, CustomerDep, Db
-from app.models import CustomerSelection, Part, ProcurementItem, Project, Scheme, SelectionLine, Style, UnitType
+from app.models import (
+    CustomerSelection,
+    Part,
+    ProcurementItem,
+    Project,
+    Scheme,
+    SchemeItem,
+    SelectionItemPick,
+    SelectionLine,
+    Style,
+    UnitType,
+)
 from app.services.access import load_readable_selection
 from app.services.ids import new_id
 from app.services.serialize import selection_dict, selection_list_item
@@ -18,6 +29,13 @@ class SelectionCreate(BaseModel):
     unit_type_id: str
 
 
+class ItemPickInput(BaseModel):
+    item_id: str
+    included: bool = True
+    quantity: float = 1
+    brand_tier: str | None = None
+
+
 class LineInput(BaseModel):
     part_id: str
     scheme_id: str | None = None
@@ -25,6 +43,7 @@ class LineInput(BaseModel):
     room_or_zone: str = ""
     brand_tier: str | None = None
     quantity: float = 1
+    items: list[ItemPickInput] | None = None
 
 
 class SelectionUpdate(BaseModel):
@@ -43,6 +62,40 @@ def _touch(selection: CustomerSelection) -> None:
     selection.updated_at = datetime.now(timezone.utc)
 
 
+def _refresh_picks(db: Db, line: SelectionLine, explicit: list[ItemPickInput] | None, include_all: bool) -> None:
+    if not line.scheme_id:
+        return
+    items = db.scalars(select(SchemeItem).where(SchemeItem.scheme_id == line.scheme_id).order_by(SchemeItem.sort_order)).all()
+    valid_ids = {item.id for item in items}
+    current = db.scalars(select(SelectionItemPick).where(SelectionItemPick.selection_line_id == line.id)).all()
+    for pick in current:
+        if pick.scheme_item_id not in valid_ids:
+            db.delete(pick)
+    db.flush()
+    by_id = {row.item_id: row for row in explicit} if explicit is not None else None
+    existing = {
+        pick.scheme_item_id: pick
+        for pick in db.scalars(select(SelectionItemPick).where(SelectionItemPick.selection_line_id == line.id)).all()
+    }
+    for item in items:
+        spec = by_id.get(item.id) if by_id is not None else None
+        pick = existing.get(item.id)
+        if pick is None:
+            pick = SelectionItemPick(
+                id=new_id("pick"),
+                selection_line_id=line.id,
+                scheme_item_id=item.id,
+                included=spec.included if spec else include_all,
+                quantity=spec.quantity if spec else item.default_quantity,
+                brand_tier=(spec.brand_tier if spec and spec.brand_tier else line.brand_tier or "domestic"),
+            )
+            db.add(pick)
+        elif spec is not None:
+            pick.included = spec.included
+            pick.quantity = spec.quantity
+            pick.brand_tier = spec.brand_tier or pick.brand_tier or "domestic"
+
+
 def _upsert_line(
     db: Db,
     selection: CustomerSelection,
@@ -53,6 +106,8 @@ def _upsert_line(
     room_or_zone: str,
     brand_tier: str | None,
     quantity: float,
+    explicit_items: list[ItemPickInput] | None = None,
+    include_all: bool = False,
 ) -> None:
     zone = (room_or_zone or "").strip()[:40]
     existing = db.scalar(
@@ -82,6 +137,8 @@ def _upsert_line(
     existing.quantity = quantity
     if part_id in VISUAL_PARTS and zone == "":
         setattr(selection, f"{part_id}_scheme_id", scheme_id)
+    db.flush()
+    _refresh_picks(db, existing, explicit_items, include_all and part_id not in VISUAL_PARTS)
 
 
 def _validate_line(db: Db, selection: CustomerSelection, line: LineInput) -> None:
@@ -109,6 +166,15 @@ def _validate_line(db: Db, selection: CustomerSelection, line: LineInput) -> Non
         item = db.get(ProcurementItem, line.procurement_item_id)
         if item is None or item.category != part.id:
             raise HTTPException(status_code=400, detail="价表物料与类目不匹配")
+    if line.items and line.scheme_id:
+        for pick in line.items:
+            piece = db.get(SchemeItem, pick.item_id)
+            if piece is None or piece.scheme_id != line.scheme_id:
+                raise HTTPException(status_code=400, detail="件不属于当前方案")
+            if pick.quantity <= 0:
+                raise HTTPException(status_code=400, detail="数量需要大于 0")
+            if pick.brand_tier is not None and pick.brand_tier not in BRAND_TIERS:
+                raise HTTPException(status_code=400, detail="品牌档位只能是国产或进口")
 
 
 def _apply_update(db: Db, selection: CustomerSelection, body: SelectionUpdate) -> None:
@@ -177,6 +243,8 @@ def _apply_update(db: Db, selection: CustomerSelection, body: SelectionUpdate) -
                 room_or_zone=line.room_or_zone,
                 brand_tier=line.brand_tier,
                 quantity=line.quantity,
+                explicit_items=line.items,
+                include_all=True,
             )
             changed = True
     if changed:

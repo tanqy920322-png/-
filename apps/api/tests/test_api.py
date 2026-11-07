@@ -228,3 +228,29 @@ def test_nine_parts_and_addon_quote(client):
     stored = {line["part_id"]: line for line in body["lines"]}
     assert stored["lighting"]["brand_tier"] == "import"
     assert stored["sanitary"]["scheme_id"] == "sanitary-1"
+    door = next(part for part in body["parts"] if part["id"] == "entry_door")
+    assert len(door["schemes"][0]["items"]) == 1
+    ceiling = next(part for part in body["parts"] if part["id"] == "ceiling")
+    slot = next(item for item in ceiling["schemes"][0]["items"] if item["name"] == "灯槽灯带")
+    with_slot = client.patch(
+        f"/api/selections/{selection['id']}",
+        headers=auth(token),
+        json={
+            "lines": [
+                {
+                    "part_id": "ceiling",
+                    "scheme_id": "cream-ceiling-1",
+                    "items": [
+                        {
+                            "item_id": slot["id"],
+                            "included": True,
+                            "quantity": 1,
+                            "brand_tier": "domestic",
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    assert with_slot.status_code == 200
+    assert with_slot.json()["quote"]["total"] == 28939.8

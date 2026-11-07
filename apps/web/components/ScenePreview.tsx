@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { MaterialSpec } from "@/lib/types";
 import { applyFinish, preloadFinishTextures, shade } from "@/components/sceneTextures";
 
@@ -43,6 +44,9 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
     element.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
     const camera = new THREE.PerspectiveCamera(56, 1, 0.08, 40);
     // Entry view: dining to the left, sofa and window to the right, ceiling in the upper frame.
     camera.position.set(-0.2, 2.02, 2.32);
@@ -446,14 +450,15 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
 
       const metalColor = look.styleId === "light_luxury" ? "#c6a36a" : look.ceiling.accent;
       metalMat.color.set(look.ceiling.feature === "mirror_edge" ? "#1a1a1a" : metalColor);
-      metalMat.metalness = look.ceiling.feature === "mirror_edge" ? 0.9 : 0.72;
-      metalMat.roughness = look.ceiling.feature === "mirror_edge" ? 0.22 : 0.34;
+      metalMat.metalness = look.ceiling.feature === "mirror_edge" ? 0.96 : 0.78;
+      metalMat.roughness = look.ceiling.feature === "mirror_edge" ? 0.08 : 0.22;
+      metalMat.envMapIntensity = 1.4;
       metalMat.emissive.set("#000000");
 
       const glow = look.ceiling.feature === "cove" || look.ceiling.feature === "gold_trough";
       coveMat.color.set(look.ceiling.accent);
       coveMat.emissive.set(look.ceiling.accent);
-      coveMat.emissiveIntensity = look.ceiling.feature === "gold_trough" ? 0.9 : 0.65;
+      coveMat.emissiveIntensity = look.ceiling.feature === "gold_trough" ? 1.35 : 1.05;
       coveMat.metalness = look.ceiling.feature === "gold_trough" ? 0.7 : 0.04;
       coveLights.forEach((light) => {
         light.intensity = glow ? (look.ceiling.feature === "gold_trough" ? 7 : 10) : 0;
@@ -462,7 +467,7 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
       veneerMat.color.set(look.ceiling.accent);
       veneerMat.roughness = 0.5;
       veneerMat.metalness = 0.02;
-      inlayMat.color.set(look.floor.accent);
+      inlayMat.color.set(look.floor.feature === "marble_border" ? "#14110f" : look.floor.accent);
       inlayMat.metalness = look.floor.feature === "metal_grout" ? 0.75 : 0.08;
       inlayMat.roughness = look.floor.feature === "metal_grout" ? 0.25 : 0.4;
 
@@ -475,11 +480,34 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
         group.visible = active.has(name);
       });
 
-      hemi.color.set(look.styleId === "light_luxury" ? "#f4f6f8" : "#fff3e2");
-      hemi.groundColor.set(look.styleId === "light_luxury" ? "#b7b8ba" : "#c9b59a");
-      sun.color.set(look.styleId === "cream" ? "#ffe3c2" : "#fff6ea");
-      renderer.toneMappingExposure = look.styleId === "light_luxury" ? 0.98 : 1.05;
-      pendantLight.color.set(look.styleId === "light_luxury" ? "#f0d7a4" : "#ffc98a");
+      if (look.styleId === "cream") {
+        hemi.color.set("#ffe4bc");
+        hemi.groundColor.set("#e4b27a");
+        hemi.intensity = 1.05;
+        sun.color.set("#ffc98a");
+        sun.intensity = 2.7;
+        renderer.toneMappingExposure = 1.14;
+        pendantLight.color.set("#ff9f3a");
+        pendantLight.intensity = 20;
+      } else if (look.styleId === "european") {
+        hemi.color.set("#fff1d2");
+        hemi.groundColor.set("#b88848");
+        hemi.intensity = 0.92;
+        sun.color.set("#ffe0a8");
+        sun.intensity = 2.45;
+        renderer.toneMappingExposure = 1.06;
+        pendantLight.color.set("#d4923a");
+        pendantLight.intensity = 16;
+      } else {
+        hemi.color.set("#d5dee6");
+        hemi.groundColor.set("#5e656c");
+        hemi.intensity = 0.82;
+        sun.color.set("#e4edf2");
+        sun.intensity = 2.05;
+        renderer.toneMappingExposure = 0.94;
+        pendantLight.color.set("#e4c27a");
+        pendantLight.intensity = 12;
+      }
     };
     applyRef.current = apply;
     preloadFinishTextures().then(() => {

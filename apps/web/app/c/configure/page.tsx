@@ -7,9 +7,78 @@ import { api, ApiError } from "@/lib/api";
 import { yuan, withScheme } from "@/lib/money";
 import { CUSTOMER_TOKEN, useQueryParam, useToken } from "@/lib/session";
 import { PhoneHeader, QuoteLines, Steps } from "@/components/ui";
-import type { Scheme, Selection } from "@/lib/types";
+import type { ItemPick, Scheme, Selection } from "@/lib/types";
+
+type BrandTier = "domestic" | "import";
+type ItemDraft = { item_id: string; included: boolean; quantity: number; brand_tier: BrandTier };
 
 const ScenePreview = dynamic(() => import("@/components/ScenePreview"), { ssr: false });
+
+function ItemKit({
+  scheme,
+  picks,
+  onChange,
+}: {
+  scheme?: Scheme;
+  picks?: ItemPick[];
+  onChange: (drafts: ItemDraft[]) => void;
+}) {
+  if (!scheme?.items?.length) return null;
+  const drafts = (scheme.items || []).map((item) => {
+    const pick = picks?.find((row) => row.scheme_item_id === item.id);
+    return {
+      item_id: item.id,
+      included: pick?.included ?? false,
+      quantity: pick?.quantity ?? item.default_quantity,
+      brand_tier: (pick?.brand_tier === "import" ? "import" : "domestic") as BrandTier,
+      item,
+    };
+  });
+  function commit(itemId: string, patch: Partial<ItemDraft>) {
+    onChange(
+      drafts.map((row) =>
+        row.item_id === itemId ? { item_id: row.item_id, included: row.included, quantity: row.quantity, brand_tier: row.brand_tier, ...patch } : {
+          item_id: row.item_id,
+          included: row.included,
+          quantity: row.quantity,
+          brand_tier: row.brand_tier,
+        },
+      ),
+    );
+  }
+  return (
+    <div className="stack">
+      <p className="fine">件组：每件选品牌、要不要、数量。入户门如果只有一件，也在这里勾。</p>
+      {drafts.map((row) => (
+        <div key={row.item_id} className="card">
+          <label className="row-actions">
+            <input type="checkbox" checked={row.included} onChange={(event) => commit(row.item_id, { included: event.target.checked })} />
+            <strong>{row.item.name}</strong>
+            <span>{row.item.unit_price} 元</span>
+          </label>
+          <div className="row-actions">
+            <label className="field">
+              数量
+              <input
+                type="number"
+                min={1}
+                value={row.quantity}
+                onChange={(event) => commit(row.item_id, { quantity: Math.max(1, Number(event.target.value) || 1) })}
+              />
+            </label>
+            <label className="field">
+              品牌
+              <select value={row.brand_tier} onChange={(event) => commit(row.item_id, { brand_tier: event.target.value as BrandTier })}>
+                <option value="domestic">国产</option>
+                <option value="import">进口</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function ConfigurePage() {
   const router = useRouter();
@@ -37,8 +106,8 @@ export default function ConfigurePage() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "方案加载失败"));
   }, [token, sid, router]);
 
-  async function saveLine(partId: string, schemeId: string | null, brandTier: "domestic" | "import" | null) {
-    if (!token || !sid || !schemeId) return;
+  async function saveLine(partId: string, schemeId: string, items?: ItemDraft[]) {
+    if (!token || !sid) return;
     setSaving(true);
     setError("");
     try {
@@ -46,7 +115,7 @@ export default function ConfigurePage() {
         method: "PATCH",
         token,
         body: JSON.stringify({
-          lines: [{ part_id: partId, scheme_id: schemeId, brand_tier: brandTier }],
+          lines: [{ part_id: partId, scheme_id: schemeId, items }],
         }),
       });
       setSelection(saved);
@@ -110,6 +179,7 @@ export default function ConfigurePage() {
               </button>
             ))}
           </div>
+          <p className="fine">三维只表现天花、地面、墙面的方案材质。九类都是先选方案，再在件组里逐件定品牌、要不要和数量。</p>
           {group?.schemes.map((scheme) => (
             <button
               key={scheme.id}
@@ -126,34 +196,26 @@ export default function ConfigurePage() {
               <span className="muted">{scheme.summary}</span>
             </button>
           ))}
-          <section className="stack">
-            <h2 style={{ margin: "8px 0 0", fontSize: 16 }}>其他类目</h2>
-            <p className="fine">这六类计入报价，三维仍只表现天花、地面和墙面。</p>
-            {(selection.parts || []).filter((item) => !item.visual).map((item) => {
+          {group && selectedId ? (
+            <ItemKit
+              scheme={group.schemes.find((scheme) => scheme.id === selectedId)}
+              picks={(selection.lines || []).find((line) => line.part_id === group.id && line.scheme_id === selectedId)?.picks}
+              onChange={(drafts) => saveLine(group.id, selectedId, drafts)}
+            />
+          ) : null}
+          {(selection.parts || [])
+            .filter((item) => !item.visual)
+            .map((item) => {
               const current = (selection.lines || []).find((line) => line.part_id === item.id);
               return (
                 <div key={item.id} className="card stack">
                   <strong>{item.name}</strong>
-                  {item.allows_brand_tier ? (
-                    <label className="field">
-                      品牌档
-                      <select
-                        value={current?.brand_tier || "domestic"}
-                        onChange={(event) =>
-                          saveLine(item.id, current?.scheme_id || item.schemes[0]?.id || null, event.target.value as "domestic" | "import")
-                        }
-                      >
-                        <option value="domestic">国产</option>
-                        <option value="import">进口</option>
-                      </select>
-                    </label>
-                  ) : null}
                   {item.schemes.map((scheme) => (
                     <button
                       key={scheme.id}
                       type="button"
                       className={current?.scheme_id === scheme.id ? "scheme on" : "scheme"}
-                      onClick={() => saveLine(scheme.part_id, scheme.id, current?.brand_tier || (item.allows_brand_tier ? "domestic" : null))}
+                      onClick={() => saveLine(item.id, scheme.id)}
                     >
                       <span className="scheme-head">
                         <strong>{scheme.name}</strong>
@@ -162,10 +224,16 @@ export default function ConfigurePage() {
                       <span className="muted">{scheme.summary}</span>
                     </button>
                   ))}
+                  {current?.scheme_id ? (
+                    <ItemKit
+                      scheme={item.schemes.find((scheme) => scheme.id === current.scheme_id)}
+                      picks={current.picks}
+                      onChange={(drafts) => saveLine(item.id, current.scheme_id || "", drafts)}
+                    />
+                  ) : null}
                 </div>
               );
             })}
-          </section>
           <QuoteLines quote={selection.quote} />
           <div className="sticky-total">
             <div>
