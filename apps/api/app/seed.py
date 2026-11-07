@@ -199,61 +199,157 @@ def _upsert_catalog_prices(db: Session, catalog: dict) -> None:
     db.flush()
 
 
-# Fixed extras under finish schemes. Not included until the customer opts in.
-FINISH_KITS: dict[str, list[tuple[str, str, str, int]]] = {
-    "ceiling": [("slot", "灯槽灯带", "160", 1), ("downlight", "筒灯点位", "48", 6)],
-    "wall": [("panel", "背景墙板", "860", 1), ("trim", "造型线", "220", 1)],
-    "floor": [("border", "波打线", "96", 1), ("sill", "过门石", "180", 1)],
-}
-
-# Shares of the scheme price. Entry door is a one-piece kit on purpose.
-EACH_SPLITS: dict[str, list[tuple[str, str, str]]] = {
-    "cabinetry": [("base", "地柜", "0.62"), ("upper", "吊柜", "0.38")],
-    "sanitary": [("faucet", "龙头", "0.37"), ("basin", "菜盆", "0.28"), ("shower", "花洒", "0.35")],
-    "entry_door": [("leaf", "门扇", "1")],
-    "kitchen_appliance": [("hood", "烟机", "0.62"), ("hob", "炉灶", "0.38")],
-    "lighting": [("main", "主灯", "0.65"), ("spot", "筒灯", "0.35")],
-    "switch_socket": [("switch", "开关", "0.45"), ("socket", "插座", "0.55")],
-}
+def _money(value: str) -> Decimal:
+    return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _split_prices(total: Decimal, fractions: list[Decimal]) -> list[Decimal]:
-    amounts: list[Decimal] = []
-    running = Decimal("0.00")
-    for index, fraction in enumerate(fractions):
-        if index == len(fractions) - 1:
-            amounts.append((total - running).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+def _slot(
+    slug: str,
+    name: str,
+    room: str,
+    group: str,
+    price: str,
+    quantity: int,
+    display_part: str | None = None,
+) -> dict:
+    return {
+        "slug": slug,
+        "name": name,
+        "room_name": room,
+        "group_label": group,
+        "unit_price": _money(price),
+        "default_quantity": quantity,
+        "display_part_id": display_part,
+    }
+
+
+def _slots_for(scheme: Scheme) -> list[dict]:
+    """Room slots under a scheme. Lighting rides on the ceiling scheme."""
+    index = scheme.scheme_index
+    part_id = scheme.part_id
+    if part_id == "ceiling":
+        if index == 2:
+            lights = [
+                _slot("spot-living", "射灯／筒灯", "客厅", "客厅天花 · 12 个射灯／筒灯", "110", 12, "lighting"),
+                _slot("spot-dining", "射灯", "餐厅", "餐厅天花 · 6 个射灯", "110", 6, "lighting"),
+                _slot("spot-master", "筒灯", "主卧", "主卧天花 · 6 个筒灯", "100", 6, "lighting"),
+            ]
+        elif index == 3:
+            lights = [
+                _slot("spot-living", "射灯／筒灯", "客厅", "客厅天花 · 6 个射灯／筒灯", "140", 6, "lighting"),
+                _slot("spot-dining", "射灯", "餐厅", "餐厅天花 · 4 个射灯", "140", 4, "lighting"),
+                _slot("spot-master", "筒灯", "主卧", "主卧天花 · 2 个筒灯", "140", 2, "lighting"),
+            ]
         else:
-            piece = (total * fraction).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            amounts.append(piece)
-            running += piece
-    return amounts
+            lights = [
+                _slot("spot-living", "射灯／筒灯", "客厅", "客厅天花 · 9 个射灯／筒灯", "90", 9, "lighting"),
+                _slot("spot-dining", "射灯", "餐厅", "餐厅天花 · 5 个射灯", "90", 5, "lighting"),
+                _slot("spot-master", "筒灯", "主卧", "主卧天花 · 4 个筒灯", "85", 4, "lighting"),
+            ]
+        return [_slot("cove", "灯槽灯带", "客厅", "客厅天花 · 灯槽", "160", 1), *lights]
+    if part_id == "wall":
+        return [
+            _slot("panel", "背景墙板", "客厅", "客厅 · 背景墙板", "860", 1),
+            _slot("trim", "造型线", "客厅", "客厅 · 造型线", "220", 1),
+        ]
+    if part_id == "floor":
+        return [
+            _slot("border", "波打线", "客厅", "客厅 · 波打线", "96", 1),
+            _slot("sill", "过门石", "厨房", "厨房 · 过门石", "180", 1),
+        ]
+    if part_id == "cabinetry" and index == 1:
+        return [
+            _slot("tv", "电视柜", "客厅", "客厅 · 电视柜", "4200", 1),
+            _slot("side", "餐边柜", "餐厅", "餐厅 · 餐边柜", "2600", 1),
+        ]
+    if part_id == "cabinetry":
+        return [
+            _slot("tv", "电视柜", "客厅", "客厅 · 电视柜", "2200", 1),
+            _slot("side", "餐边柜", "餐厅", "餐厅 · 餐边柜", "1400", 1),
+            _slot("wardrobe", "衣柜", "主卧", "主卧 · 衣柜", "4600", 1),
+            _slot("book", "书柜", "主卧", "主卧 · 书柜", "1800", 1),
+            _slot("night", "床头柜", "主卧", "主卧 · 床头柜", "900", 1),
+            _slot("second", "衣柜", "次卧", "次卧 · 衣柜", "1900", 1),
+        ]
+    if part_id == "sanitary" and index == 1:
+        return [
+            _slot("shower", "花洒", "公卫", "公卫 · 花洒", "580", 1),
+            _slot("basin", "面盆龙头", "公卫", "公卫 · 面盆龙头", "420", 1),
+            _slot("wc", "马桶", "公卫", "公卫 · 马桶", "480", 1),
+            _slot("tap", "龙头", "厨房", "厨房 · 龙头", "80", 1),
+            _slot("sink", "菜盆", "厨房", "厨房 · 菜盆", "120", 1),
+        ]
+    if part_id == "sanitary":
+        return [
+            _slot("shower", "花洒", "公卫", "公卫 · 花洒", "720", 1),
+            _slot("basin", "面盆龙头", "公卫", "公卫 · 面盆龙头", "560", 1),
+            _slot("wc", "马桶", "公卫", "公卫 · 马桶", "640", 1),
+            _slot("mshower", "花洒", "主卫", "主卫 · 花洒", "720", 1),
+            _slot("mwc", "马桶", "主卫", "主卫 · 马桶", "360", 1),
+            _slot("tap", "龙头", "厨房", "厨房 · 龙头", "80", 1),
+            _slot("sink", "菜盆", "厨房", "厨房 · 菜盆", "120", 1),
+        ]
+    if part_id == "kitchen_appliance" and index == 1:
+        return [
+            _slot("hood", "烟机", "厨房", "厨房 · 烟机", "2490", 1),
+            _slot("hob", "炉灶", "厨房", "厨房 · 炉灶", "1500", 1),
+        ]
+    if part_id == "kitchen_appliance":
+        return [
+            _slot("hood", "烟机", "厨房", "厨房 · 烟机", "3200", 1),
+            _slot("hob", "炉灶", "厨房", "厨房 · 炉灶", "2100", 1),
+            _slot("oven", "蒸烤箱", "厨房", "厨房 · 蒸烤箱", "2890", 1),
+            _slot("washer", "洗碗机", "厨房", "厨房 · 洗碗机", "800", 1),
+        ]
+    if part_id == "switch_socket" and index == 1:
+        return [
+            _slot("living", "开关插座", "客厅", "客厅 · 开关插座", "15", 12),
+            _slot("master", "开关插座", "主卧", "主卧 · 开关插座", "15", 8),
+            _slot("kitchen", "开关插座", "厨房", "厨房 · 开关插座", "15", 6),
+            _slot("bath", "开关插座", "公卫", "公卫 · 开关插座", "15", 6),
+        ]
+    if part_id == "switch_socket":
+        return [
+            _slot("living", "开关插座", "客厅", "客厅 · 开关插座", "20", 18),
+            _slot("master", "开关插座", "主卧", "主卧 · 开关插座", "20", 12),
+            _slot("second", "开关插座", "次卧", "次卧 · 开关插座", "20", 10),
+            _slot("kitchen", "开关插座", "厨房", "厨房 · 开关插座", "20", 10),
+            _slot("bath", "开关插座", "公卫", "公卫 · 开关插座", "20", 8),
+            _slot("dining", "开关插座", "餐厅", "餐厅 · 开关插座", "20", 6),
+        ]
+    if part_id == "entry_door":
+        price = Decimal(str(scheme.unit_price)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return [
+            {
+                "slug": "leaf",
+                "name": "门扇",
+                "room_name": "",
+                "group_label": "整户 · 1 樘入户门",
+                "unit_price": price,
+                "default_quantity": 1,
+                "display_part_id": None,
+            }
+        ]
+    return []
 
 
 def _seed_scheme_items(db: Session) -> None:
     schemes = db.scalars(select(Scheme)).all()
     for scheme in schemes:
-        wanted: list[tuple[str, str, Decimal, int]] = []
-        if scheme.part_id in FINISH_KITS:
-            for slug, name, price, qty in FINISH_KITS[scheme.part_id]:
-                wanted.append((slug, name, Decimal(price), qty))
-        elif scheme.part_id in EACH_SPLITS:
-            pieces = EACH_SPLITS[scheme.part_id]
-            amounts = _split_prices(Decimal(str(scheme.unit_price)), [Decimal(piece[2]) for piece in pieces])
-            for (slug, name, _), amount in zip(pieces, amounts):
-                wanted.append((slug, name, amount, 1))
-        else:
-            continue
+        wanted = _slots_for(scheme)
         keep = set()
-        for sort_order, (slug, name, price, qty) in enumerate(wanted):
-            item_id = f"{scheme.id}-{slug}"
+        for sort_order, slot in enumerate(wanted):
+            item_id = f"{scheme.id}-{slot['slug']}"
             keep.add(item_id)
             row = db.get(SchemeItem, item_id)
             fields = {
                 "scheme_id": scheme.id,
-                "name": name,
-                "unit_price": price,
-                "default_quantity": qty,
+                "name": slot["name"],
+                "room_name": slot["room_name"],
+                "group_label": slot["group_label"],
+                "display_part_id": slot["display_part_id"],
+                "unit_price": slot["unit_price"],
+                "default_quantity": slot["default_quantity"],
                 "sort_order": sort_order,
             }
             if row is None:

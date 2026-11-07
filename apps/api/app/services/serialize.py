@@ -40,6 +40,9 @@ def scheme_dict(scheme: Scheme) -> dict:
             {
                 "id": item.id,
                 "name": item.name,
+                "room_name": item.room_name or "",
+                "group_label": item.group_label or item.name,
+                "display_part_id": item.display_part_id,
                 "unit_price": num(item.unit_price),
                 "default_quantity": num(item.default_quantity),
                 "sort_order": item.sort_order,
@@ -208,37 +211,27 @@ def quote_for_selection(db: Session, selection) -> QuoteResult:
         if part is None:
             continue
         included = [pick for pick in (line.picks or []) if pick.included and pick.item is not None]
-        if part.pricing_mode == "area":
+        if included:
             for pick in included:
+                display_id = pick.item.display_part_id or line.part_id
+                display = part_rows.get(display_id)
+                title = display.name if display else part.name
+                room = (pick.item.room_name or "").strip()
+                label = f"{title}·{room}·{pick.item.name}" if room else f"{title}·{pick.item.name}"
                 parts.append(
                     PricedPart(
-                        part_id=f"{line.part_id}#{pick.scheme_item_id}",
-                        part_name=f"{part.name}·{pick.item.name}",
+                        part_id=f"{display_id}#{pick.scheme_item_id}",
+                        part_name=label,
                         scheme_id=line.scheme_id,
-                        scheme_name=pick.item.name,
+                        scheme_name=pick.item.group_label or pick.item.name,
                         unit_price=as_decimal(pick.item.unit_price),
                         pricing="each",
                         quantity=as_decimal(pick.quantity or 1),
-                        brand_tier=pick.brand_tier,
+                        brand_tier=pick.brand_tier or line.brand_tier,
                     )
                 )
             continue
-        if included:
-            amount = sum((as_decimal(pick.item.unit_price) * as_decimal(pick.quantity or 1) for pick in included), Decimal("0"))
-            parts.append(
-                PricedPart(
-                    part_id=line.part_id,
-                    part_name=part.name,
-                    scheme_id=line.scheme_id,
-                    scheme_name=None if line.scheme is None else line.scheme.name,
-                    unit_price=amount,
-                    pricing="each",
-                    quantity=Decimal("1"),
-                    brand_tier=line.brand_tier or included[0].brand_tier,
-                )
-            )
-            continue
-        if line.picks:
+        if part.pricing_mode == "area" or line.picks:
             continue
         unit_price, scheme_id, scheme_name = _line_price(line)
         if unit_price is None:
@@ -330,6 +323,9 @@ def line_dict(line: SelectionLine) -> dict:
                 "id": pick.id,
                 "scheme_item_id": pick.scheme_item_id,
                 "name": pick.item.name if pick.item is not None else "",
+                "room_name": "" if pick.item is None else (pick.item.room_name or ""),
+                "group_label": "" if pick.item is None else (pick.item.group_label or pick.item.name),
+                "display_part_id": line.part_id if pick.item is None or not pick.item.display_part_id else pick.item.display_part_id,
                 "unit_price": num(pick.item.unit_price) if pick.item is not None else 0,
                 "included": bool(pick.included),
                 "quantity": num(pick.quantity or 1),

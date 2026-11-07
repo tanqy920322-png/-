@@ -14,17 +14,26 @@ type ItemDraft = { item_id: string; included: boolean; quantity: number; brand_t
 
 const ScenePreview = dynamic(() => import("@/components/ScenePreview"), { ssr: false });
 
+function visibleItems(scheme: Scheme | undefined, displayPart?: string) {
+  return (scheme?.items || []).filter((item) => (item.display_part_id || scheme?.part_id) === (displayPart || scheme?.part_id));
+}
+
 function ItemKit({
   scheme,
   picks,
   onChange,
+  displayPart,
+  hint,
 }: {
   scheme?: Scheme;
   picks?: ItemPick[];
   onChange: (drafts: ItemDraft[]) => void;
+  displayPart?: string;
+  hint?: string;
 }) {
-  if (!scheme?.items?.length) return null;
-  const drafts = (scheme.items || []).map((item) => {
+  const items = visibleItems(scheme, displayPart);
+  if (!items.length) return null;
+  const drafts = items.map((item) => {
     const pick = picks?.find((row) => row.scheme_item_id === item.id);
     return {
       item_id: item.id,
@@ -34,46 +43,51 @@ function ItemKit({
       item,
     };
   });
+  const rooms = Array.from(new Set(drafts.map((row) => row.item.room_name || "整户")));
   function commit(itemId: string, patch: Partial<ItemDraft>) {
     onChange(
       drafts.map((row) =>
-        row.item_id === itemId ? { item_id: row.item_id, included: row.included, quantity: row.quantity, brand_tier: row.brand_tier, ...patch } : {
-          item_id: row.item_id,
-          included: row.included,
-          quantity: row.quantity,
-          brand_tier: row.brand_tier,
-        },
+        row.item_id === itemId
+          ? { item_id: row.item_id, included: row.included, quantity: row.quantity, brand_tier: row.brand_tier, ...patch }
+          : { item_id: row.item_id, included: row.included, quantity: row.quantity, brand_tier: row.brand_tier },
       ),
     );
   }
   return (
     <div className="stack">
-      <p className="fine">件组：每件选品牌、要不要、数量。入户门如果只有一件，也在这里勾。</p>
-      {drafts.map((row) => (
-        <div key={row.item_id} className="card">
-          <label className="row-actions">
-            <input type="checkbox" checked={row.included} onChange={(event) => commit(row.item_id, { included: event.target.checked })} />
-            <strong>{row.item.name}</strong>
-            <span>{row.item.unit_price} 元</span>
-          </label>
-          <div className="row-actions">
-            <label className="field">
-              数量
-              <input
-                type="number"
-                min={1}
-                value={row.quantity}
-                onChange={(event) => commit(row.item_id, { quantity: Math.max(1, Number(event.target.value) || 1) })}
-              />
-            </label>
-            <label className="field">
-              品牌
-              <select value={row.brand_tier} onChange={(event) => commit(row.item_id, { brand_tier: event.target.value as BrandTier })}>
-                <option value="domestic">国产</option>
-                <option value="import">进口</option>
-              </select>
-            </label>
-          </div>
+      <p className="fine">{hint || "按房间展开件组。勾选是要，取消是不要；数量和品牌可以改。"}</p>
+      {rooms.map((room) => (
+        <div key={room} className="stack">
+          <strong>{room}</strong>
+          {drafts
+            .filter((row) => (row.item.room_name || "整户") === room)
+            .map((row) => (
+              <div key={row.item_id} className="card">
+                <label className="row-actions">
+                  <input type="checkbox" checked={row.included} onChange={(event) => commit(row.item_id, { included: event.target.checked })} />
+                  <strong>{row.item.group_label || row.item.name}</strong>
+                  <span>{row.item.unit_price} 元</span>
+                </label>
+                <div className="row-actions">
+                  <label className="field">
+                    数量
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.quantity}
+                      onChange={(event) => commit(row.item_id, { quantity: Math.max(1, Number(event.target.value) || 1) })}
+                    />
+                  </label>
+                  <label className="field">
+                    品牌
+                    <select value={row.brand_tier} onChange={(event) => commit(row.item_id, { brand_tier: event.target.value as BrandTier })}>
+                      <option value="domestic">国产</option>
+                      <option value="import">进口</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            ))}
         </div>
       ))}
     </div>
@@ -179,7 +193,7 @@ export default function ConfigurePage() {
               </button>
             ))}
           </div>
-          <p className="fine">三维只表现天花、地面、墙面的方案材质。九类都是先选方案，再在件组里逐件定品牌、要不要和数量。</p>
+          <p className="fine">三维仍只表现天花、地面、墙面。柜、灯、洁具不进模型。先选方案，再按房间逐件定品牌、要不要和数量。</p>
           {group?.schemes.map((scheme) => (
             <button
               key={scheme.id}
@@ -201,10 +215,24 @@ export default function ConfigurePage() {
               scheme={group.schemes.find((scheme) => scheme.id === selectedId)}
               picks={(selection.lines || []).find((line) => line.part_id === group.id && line.scheme_id === selectedId)?.picks}
               onChange={(drafts) => saveLine(group.id, selectedId, drafts)}
+              hint={group.id === "ceiling" ? "天花上的灯槽在这里。射灯和筒灯在下面「灯具」里，跟着这个天花方案走。" : undefined}
             />
           ) : null}
+          {selection.ceiling ? (
+            <section className="card stack">
+              <strong>灯具</strong>
+              <p className="fine">来自天花方案「{selection.ceiling.name}」。换天花方案后，这里的件组会换。</p>
+              <ItemKit
+                scheme={selection.ceiling}
+                displayPart="lighting"
+                picks={(selection.lines || []).find((line) => line.part_id === "ceiling" && line.scheme_id === selection.ceiling?.id)?.picks}
+                onChange={(drafts) => saveLine("ceiling", selection.ceiling?.id || "", drafts)}
+                hint="成组文案是房间天花上的灯位。数量可改，品牌分国产和进口。"
+              />
+            </section>
+          ) : null}
           {(selection.parts || [])
-            .filter((item) => !item.visual)
+            .filter((item) => !item.visual && item.id !== "lighting")
             .map((item) => {
               const current = (selection.lines || []).find((line) => line.part_id === item.id);
               return (

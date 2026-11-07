@@ -103,6 +103,14 @@ def ensure_schema(engine) -> None:
             statements.append("ALTER TABLE parts ADD COLUMN allows_brand_tier BOOLEAN DEFAULT FALSE")
         if "visual" not in columns:
             statements.append("ALTER TABLE parts ADD COLUMN visual BOOLEAN DEFAULT FALSE")
+    if "scheme_items" in tables:
+        item_columns = {column["name"] for column in inspector.get_columns("scheme_items")}
+        if "room_name" not in item_columns:
+            statements.append("ALTER TABLE scheme_items ADD COLUMN room_name VARCHAR(40) DEFAULT ''")
+        if "group_label" not in item_columns:
+            statements.append("ALTER TABLE scheme_items ADD COLUMN group_label VARCHAR(80) DEFAULT ''")
+        if "display_part_id" not in item_columns:
+            statements.append("ALTER TABLE scheme_items ADD COLUMN display_part_id VARCHAR(32)")
     relax_sqlite = engine.dialect.name == "sqlite" and _scheme_style_is_required(inspector, tables)
     relax_postgres = engine.dialect.name == "postgresql" and _scheme_style_is_required(inspector, tables)
     if statements or relax_sqlite or relax_postgres:

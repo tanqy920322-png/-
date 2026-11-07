@@ -122,17 +122,17 @@
       "sort_order": 1,
       "schemes": {
         "ceiling": [
-          {"index": 1, "name": "平顶奶油漆 + 暖色灯槽", "summary": "平顶奶油乳胶漆，四周暖色灯槽。", "unit_price": 180, "material": {"color": "#F6F0E6", "roughness": 0.92, "metalness": 0.0, "accent": "#E8C99A", "feature": "cove"}},
+          {"index": 1, "name": "平顶奶油漆 + 暖色灯槽", "summary": "平顶奶油乳胶漆，四周暖色灯槽。", "unit_price": 180, "material": {"color": "#F8E7C8", "roughness": 0.92, "metalness": 0.0, "accent": "#E8B86A", "feature": "cove"}},
           {"index": 2, "name": "浅二级跌级吊顶", "summary": "浅浅一层跌级，边缘仍是暖白。", "unit_price": 260, "material": {"color": "#F7F1E6", "roughness": 0.88, "metalness": 0.0, "accent": "#E6D3B0", "feature": "tray"}},
           {"index": 3, "name": "局部浅木皮", "summary": "局部浅色木皮，其余保持奶油画顶。", "unit_price": 320, "material": {"color": "#E4CBA4", "roughness": 0.55, "metalness": 0.02, "accent": "#C9A679", "feature": "veneer"}}
         ],
         "floor": [
-          {"index": 1, "name": "奶油亮光 800 砖", "summary": "奶油色亮光砖，规格 800。", "unit_price": 168, "material": {"color": "#F3E6D0", "roughness": 0.22, "metalness": 0.04, "accent": "#E4D2B4", "feature": "tile"}},
+          {"index": 1, "name": "奶油亮光 800 砖", "summary": "奶油色亮光砖，规格 800。", "unit_price": 168, "material": {"color": "#E8C07A", "roughness": 0.18, "metalness": 0.04, "accent": "#C8924A", "feature": "tile"}},
           {"index": 2, "name": "浅麦色复合地板", "summary": "浅麦色木纹复合地板。", "unit_price": 198, "material": {"color": "#E4C896", "roughness": 0.48, "metalness": 0.0, "accent": "#CDB07A", "feature": "wood"}},
           {"index": 3, "name": "蛋壳石 600×1200", "summary": "蛋壳色石材砖，600×1200。", "unit_price": 228, "material": {"color": "#EFE6D6", "roughness": 0.34, "metalness": 0.03, "accent": "#D9CBB4", "feature": "stone"}}
         ],
         "wall": [
-          {"index": 1, "name": "米白乳胶漆", "summary": "通体米白乳胶漆。", "unit_price": 85, "material": {"color": "#F7F3EC", "roughness": 0.9, "metalness": 0.0, "accent": "#F7F3EC", "feature": "paint"}},
+          {"index": 1, "name": "米白乳胶漆", "summary": "通体米白乳胶漆。", "unit_price": 85, "material": {"color": "#F6E4C8", "roughness": 0.9, "metalness": 0.0, "accent": "#E7C9A0", "feature": "paint"}},
           {"index": 2, "name": "床头/餐厅咖色墙布", "summary": "床头和餐厅做咖色墙布，其余米白。", "unit_price": 125, "material": {"color": "#F7F3EC", "roughness": 0.94, "metalness": 0.0, "accent": "#C4A484", "feature": "fabric_accent"}},
           {"index": 3, "name": "浅木护墙 2.4m", "summary": "浅木护墙到 2.4 米，上部乳胶漆。", "unit_price": 168, "material": {"color": "#F6F1E8", "roughness": 0.72, "metalness": 0.02, "accent": "#D7C4A3", "feature": "wainscot"}}
         ]
@@ -152,7 +152,7 @@
           {"index": 3, "name": "雕花石膏线 + 天花灯盘", "summary": "雕花石膏线，中央天花灯盘。", "unit_price": 420, "material": {"color": "#F4F0E6", "roughness": 0.7, "metalness": 0.04, "accent": "#B9924A", "feature": "medallion"}}
         ],
         "floor": [
-          {"index": 1, "name": "鱼肚白大理石砖 + 深色波打线", "summary": "鱼肚白大理石纹砖，深色波打线收边。", "unit_price": 258, "material": {"color": "#F4F1EA", "roughness": 0.2, "metalness": 0.06, "accent": "#3E3A36", "feature": "marble_border"}},
+          {"index": 1, "name": "鱼肚白大理石砖 + 深色波打线", "summary": "鱼肚白大理石纹砖，深色波打线收边。", "unit_price": 258, "material": {"color": "#F7F5F0", "roughness": 0.18, "metalness": 0.08, "accent": "#1A120E", "feature": "marble_border"}},
           {"index": 2, "name": "棕色实木复合地板", "summary": "暖棕色实木复合地板。", "unit_price": 268, "material": {"color": "#8C6239", "roughness": 0.42, "metalness": 0.0, "accent": "#6E4B2A", "feature": "wood"}},
           {"index": 3, "name": "几何拼花镶边", "summary": "几何拼花，四周木纹镶边。", "unit_price": 320, "material": {"color": "#C4A574", "roughness": 0.36, "metalness": 0.02, "accent": "#8C6239", "feature": "parquet"}}
         ],
@@ -172,17 +172,17 @@
       "sort_order": 3,
       "schemes": {
         "ceiling": [
-          {"index": 1, "name": "灰白顶 + 香槟金灯槽", "summary": "灰白平顶，灯槽用香槟金。", "unit_price": 240, "material": {"color": "#ECEAE6", "roughness": 0.62, "metalness": 0.04, "accent": "#C6A36A", "feature": "gold_trough"}},
+          {"index": 1, "name": "灰白顶 + 香槟金灯槽", "summary": "灰白平顶，灯槽用香槟金。", "unit_price": 240, "material": {"color": "#C9CCD0", "roughness": 0.55, "metalness": 0.06, "accent": "#C6A36A", "feature": "gold_trough"}},
           {"index": 2, "name": "高光悬浮面板 + 隐藏灯带", "summary": "高光悬浮板，灯带藏在板边。", "unit_price": 380, "material": {"color": "#F4F4F4", "roughness": 0.12, "metalness": 0.08, "accent": "#C6A36A", "feature": "gloss_panel"}},
           {"index": 3, "name": "镜面不锈钢 + 黑金属收边", "summary": "镜面不锈钢面板，黑金属收边。", "unit_price": 460, "material": {"color": "#D5D6D8", "roughness": 0.08, "metalness": 0.82, "accent": "#1A1A1A", "feature": "mirror_edge"}}
         ],
         "floor": [
-          {"index": 1, "name": "大规格灰砖 750×1500", "summary": "大规格灰色地砖，750×1500。", "unit_price": 218, "material": {"color": "#C5C6C8", "roughness": 0.28, "metalness": 0.05, "accent": "#8E9094", "feature": "tile"}},
+          {"index": 1, "name": "大规格灰砖 750×1500", "summary": "大规格灰色地砖，750×1500。", "unit_price": 218, "material": {"color": "#6E7278", "roughness": 0.32, "metalness": 0.06, "accent": "#2A2C30", "feature": "tile"}},
           {"index": 2, "name": "烟熏橡木地板", "summary": "烟熏橡木，颜色偏深。", "unit_price": 248, "material": {"color": "#6E5646", "roughness": 0.44, "metalness": 0.0, "accent": "#4A382E", "feature": "wood"}},
           {"index": 3, "name": "灰砖 + 黑金属美缝", "summary": "灰砖地面，黑金属美缝做强调。", "unit_price": 288, "material": {"color": "#B7B8BA", "roughness": 0.3, "metalness": 0.08, "accent": "#1C1C1C", "feature": "metal_grout"}}
         ],
         "wall": [
-          {"index": 1, "name": "亮光灰乳胶漆", "summary": "亮光灰乳胶漆，墙面更平。", "unit_price": 95, "material": {"color": "#D5D6D8", "roughness": 0.16, "metalness": 0.06, "accent": "#C8C9CB", "feature": "gloss"}},
+          {"index": 1, "name": "亮光灰乳胶漆", "summary": "亮光灰乳胶漆，墙面更平。", "unit_price": 95, "material": {"color": "#A7ABB0", "roughness": 0.16, "metalness": 0.08, "accent": "#8E9298", "feature": "gloss"}},
           {"index": 2, "name": "岩板电视墙 + 金属缝", "summary": "岩板电视墙，金属缝露一点。", "unit_price": 258, "material": {"color": "#C8C9CC", "roughness": 0.35, "metalness": 0.08, "accent": "#3E434A", "feature": "sintered"}},
           {"index": 3, "name": "皮革软包造型墙", "summary": "深色皮革软包做造型墙。", "unit_price": 238, "material": {"color": "#E4E4E6", "roughness": 0.55, "metalness": 0.02, "accent": "#3A342F", "feature": "leather"}}
         ]
@@ -190,17 +190,17 @@
     }
   ],
   "sku_options": [
-    {"part_id": "cabinetry", "index": 1, "name": "客餐厅柜体示意", "summary": "平板柜门，按套示意，不进三维。", "unit_price": 6800},
-    {"part_id": "cabinetry", "index": 2, "name": "全屋柜体示意", "summary": "柜体做到各屋，按套示意。", "unit_price": 12800},
-    {"part_id": "sanitary", "index": 1, "name": "龙头花洒组", "summary": "厨卫龙头、菜盆、花洒示意套装。", "unit_price": 1680},
-    {"part_id": "sanitary", "index": 2, "name": "厨卫洁具组", "summary": "龙头、花洒和面盆一起配。", "unit_price": 3200},
-    {"part_id": "entry_door", "index": 1, "name": "国产装甲门", "summary": "甲级入户门示意。", "unit_price": 2680},
-    {"part_id": "entry_door", "index": 2, "name": "静音装甲门", "summary": "静音密封示意。", "unit_price": 4580},
-    {"part_id": "kitchen_appliance", "index": 1, "name": "烟灶套装", "summary": "烟机和炉灶。", "unit_price": 3990},
-    {"part_id": "kitchen_appliance", "index": 2, "name": "烟灶蒸烤套装", "summary": "烟机、炉灶、蒸烤箱。", "unit_price": 8990},
-    {"part_id": "lighting", "index": 1, "name": "客餐厅灯具组", "summary": "主灯示意，可选国产或进口档。", "unit_price": 860},
-    {"part_id": "lighting", "index": 2, "name": "全屋灯具组", "summary": "各屋灯具示意。", "unit_price": 2460},
-    {"part_id": "switch_socket", "index": 1, "name": "开关插座组", "summary": "常用点位示意，可选国产或进口档。", "unit_price": 480},
-    {"part_id": "switch_socket", "index": 2, "name": "全屋开关插座", "summary": "按户示意。", "unit_price": 1280}
+    {"part_id": "cabinetry", "index": 1, "name": "客餐厅柜体", "summary": "先选这套，再按客厅、餐厅逐件要或不要。", "unit_price": 6800},
+    {"part_id": "cabinetry", "index": 2, "name": "全屋柜体", "summary": "主卧有衣柜、书柜、床头柜，可单独去掉。", "unit_price": 12800},
+    {"part_id": "sanitary", "index": 1, "name": "公卫与厨房", "summary": "公卫和厨房分开点件，不是一整套锁死。", "unit_price": 1680},
+    {"part_id": "sanitary", "index": 2, "name": "含主卫", "summary": "在公卫、厨房之外加上主卫件位。", "unit_price": 3200},
+    {"part_id": "entry_door", "index": 1, "name": "国产装甲门", "summary": "整户一樘，件组里就这一件。", "unit_price": 2680},
+    {"part_id": "entry_door", "index": 2, "name": "静音装甲门", "summary": "整户一樘，件组里就这一件。", "unit_price": 4580},
+    {"part_id": "kitchen_appliance", "index": 1, "name": "烟灶", "summary": "厨房里的烟机、炉灶分开要或不要。", "unit_price": 3990},
+    {"part_id": "kitchen_appliance", "index": 2, "name": "烟灶蒸烤", "summary": "厨房里再加上蒸烤箱和洗碗机。", "unit_price": 8990},
+    {"part_id": "lighting", "index": 1, "name": "随天花方案", "summary": "灯具件组由当前天花方案带出，不在这里另选一套。", "unit_price": 860},
+    {"part_id": "lighting", "index": 2, "name": "随天花方案·全屋", "summary": "灯位数量跟着天花方案，页面上按房间调。", "unit_price": 2460},
+    {"part_id": "switch_socket", "index": 1, "name": "常用点位", "summary": "客厅、主卧、厨房、公卫按房间点数量。", "unit_price": 480},
+    {"part_id": "switch_socket", "index": 2, "name": "全屋点位", "summary": "房间更多，数量可改。", "unit_price": 1280}
   ]
 }

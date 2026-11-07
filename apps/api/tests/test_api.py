@@ -206,31 +206,47 @@ def test_nine_parts_and_addon_quote(client):
         json={"style_id": "cream"},
     ).json()
     assert styled["quote"]["total"] == 26239.8
+    ceiling = next(part for part in styled["parts"] if part["id"] == "ceiling")
+    lights = next(item for item in ceiling["schemes"][0]["items"] if item["group_label"] == "客厅天花 · 9 个射灯／筒灯")
+    assert lights["room_name"] == "客厅"
+    assert lights["display_part_id"] == "lighting"
+    assert lights["default_quantity"] == 9
+    door = next(part for part in styled["parts"] if part["id"] == "entry_door")
+    assert len(door["schemes"][0]["items"]) == 1
+    assert door["schemes"][0]["items"][0]["group_label"] == "整户 · 1 樘入户门"
+    master = [item for item in next(part for part in styled["parts"] if part["id"] == "cabinetry")["schemes"][1]["items"] if item["room_name"] == "主卧"]
+    assert {item["name"] for item in master} == {"衣柜", "书柜", "床头柜"}
     saved = client.patch(
         f"/api/selections/{selection['id']}",
         headers=auth(token),
         json={
             "lines": [
                 {"part_id": "sanitary", "scheme_id": "sanitary-1"},
-                {"part_id": "lighting", "scheme_id": "lighting-1", "brand_tier": "import"},
+                {
+                    "part_id": "ceiling",
+                    "scheme_id": "cream-ceiling-1",
+                    "items": [
+                        {"item_id": lights["id"], "included": True, "quantity": 9, "brand_tier": "import"}
+                    ],
+                },
             ]
         },
     )
     assert saved.status_code == 200
     body = saved.json()
     assert body["ceiling"]["id"] == "cream-ceiling-1"
-    assert body["quote"]["total"] == 28779.8
-    extra = {line["part_id"]: line for line in body["quote"]["lines"]}
-    assert extra["sanitary"]["amount"] == 1680
-    assert extra["sanitary"]["pricing"] == "each"
-    assert extra["lighting"]["brand_tier"] == "import"
-    assert extra["lighting"]["amount"] == 860
+    assert body["quote"]["total"] == 28729.8
+    sanitary = [line for line in body["quote"]["lines"] if line["part_id"].startswith("sanitary")]
+    assert sum(line["amount"] for line in sanitary) == 1680
+    assert {line["pricing"] for line in sanitary} == {"each"}
+    light_line = next(line for line in body["quote"]["lines"] if line["part_id"].startswith("lighting#"))
+    assert light_line["brand_tier"] == "import"
+    assert light_line["quantity"] == 9
+    assert light_line["amount"] == 810
     stored = {line["part_id"]: line for line in body["lines"]}
-    assert stored["lighting"]["brand_tier"] == "import"
     assert stored["sanitary"]["scheme_id"] == "sanitary-1"
-    door = next(part for part in body["parts"] if part["id"] == "entry_door")
-    assert len(door["schemes"][0]["items"]) == 1
-    ceiling = next(part for part in body["parts"] if part["id"] == "ceiling")
+    assert {pick["room_name"] for pick in stored["sanitary"]["picks"]} >= {"公卫", "厨房"}
+    assert any(pick["brand_tier"] == "import" and pick["quantity"] == 9 for pick in stored["ceiling"]["picks"])
     slot = next(item for item in ceiling["schemes"][0]["items"] if item["name"] == "灯槽灯带")
     with_slot = client.patch(
         f"/api/selections/{selection['id']}",
@@ -241,16 +257,34 @@ def test_nine_parts_and_addon_quote(client):
                     "part_id": "ceiling",
                     "scheme_id": "cream-ceiling-1",
                     "items": [
-                        {
-                            "item_id": slot["id"],
-                            "included": True,
-                            "quantity": 1,
-                            "brand_tier": "domestic",
-                        }
+                        {"item_id": slot["id"], "included": True, "quantity": 1, "brand_tier": "domestic"}
                     ],
                 }
             ]
         },
     )
     assert with_slot.status_code == 200
-    assert with_slot.json()["quote"]["total"] == 28939.8
+    assert with_slot.json()["quote"]["total"] == 28889.8
+    night = next(item for item in master if item["name"] == "床头柜")
+    with_cabinets = client.patch(
+        f"/api/selections/{selection['id']}",
+        headers=auth(token),
+        json={"lines": [{"part_id": "cabinetry", "scheme_id": "cabinetry-2"}]},
+    )
+    assert with_cabinets.status_code == 200
+    assert with_cabinets.json()["quote"]["total"] == 41689.8
+    without_night = client.patch(
+        f"/api/selections/{selection['id']}",
+        headers=auth(token),
+        json={
+            "lines": [
+                {
+                    "part_id": "cabinetry",
+                    "scheme_id": "cabinetry-2",
+                    "items": [{"item_id": night["id"], "included": False, "quantity": 1, "brand_tier": "domestic"}],
+                }
+            ]
+        },
+    )
+    assert without_night.status_code == 200
+    assert without_night.json()["quote"]["total"] == 40789.8

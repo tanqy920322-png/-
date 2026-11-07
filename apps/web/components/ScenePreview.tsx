@@ -287,10 +287,10 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
     const border = track("marble_border");
     const yb = 0.012;
     border.add(
-      box(IX * 2 - 0.7, 0.012, 0.07, 0, yb, -IZ + 0.42, inlayMat),
-      box(IX * 2 - 0.7, 0.012, 0.07, 0, yb, IZ - 0.42, inlayMat),
-      box(0.07, 0.012, IZ * 2 - 0.9, -IX + 0.42, yb, 0, inlayMat),
-      box(0.07, 0.012, IZ * 2 - 0.9, IX - 0.42, yb, 0, inlayMat),
+      box(IX * 2 - 0.55, 0.014, 0.16, 0, yb, -IZ + 0.38, inlayMat),
+      box(IX * 2 - 0.55, 0.014, 0.16, 0, yb, IZ - 0.38, inlayMat),
+      box(0.16, 0.014, IZ * 2 - 0.7, -IX + 0.38, yb, 0, inlayMat),
+      box(0.16, 0.014, IZ * 2 - 0.7, IX - 0.38, yb, 0, inlayMat),
     );
     const groutLine = track("metal_grout");
     groutLine.add(box(0.035, 0.01, IZ * 2 - 0.5, 0.15, 0.01, -0.2, inlayMat));

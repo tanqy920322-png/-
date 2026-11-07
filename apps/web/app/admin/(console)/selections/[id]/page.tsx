@@ -77,6 +77,31 @@ export default function HouseholdPage() {
                   {line.brand_tier === "import" ? "（进口）" : line.brand_tier === "domestic" ? "（国产）" : ""}
                 </p>
               ))}
+            <h2 style={{ fontSize: 16 }}>房间 × 件数</h2>
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>房间</th>
+                  <th>件</th>
+                  <th>要不要</th>
+                  <th>数量</th>
+                  <th>品牌</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(selection.lines || []).flatMap((line) =>
+                  (line.picks || []).map((pick) => (
+                    <tr key={pick.id}>
+                      <td>{pick.room_name || "整户"}</td>
+                      <td>{pick.group_label || pick.name}</td>
+                      <td>{pick.included ? "要" : "不要"}</td>
+                      <td>{pick.quantity}</td>
+                      <td>{pick.brand_tier === "import" ? "进口" : "国产"}</td>
+                    </tr>
+                  )),
+                )}
+              </tbody>
+            </table>
           </article>
         </div>
         <div className="stack">

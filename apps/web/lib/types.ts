@@ -9,6 +9,9 @@ export type MaterialSpec = {
 export type SchemeItem = {
   id: string;
   name: string;
+  room_name?: string;
+  group_label?: string;
+  display_part_id?: string | null;
   unit_price: number;
   default_quantity: number;
   sort_order: number;
@@ -31,6 +34,9 @@ export type ItemPick = {
   id: string;
   scheme_item_id: string;
   name: string;
+  room_name?: string;
+  group_label?: string;
+  display_part_id?: string;
   unit_price: number;
   included: boolean;
   quantity: number;

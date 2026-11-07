@@ -20,7 +20,11 @@ export default function HomePage() {
           <em>发布项目、导入价表、查看一户一档</em>
         </Link>
       </div>
-      <p className="fine">本地原型。部位报价不是合同价。测试验证码 123456。</p>
+      <p className="fine">
+        本地原型。部位报价不是合同价。测试验证码 123456。
+        <Link href="/preview/finishes"> 材质样张</Link>
+        可直接截奶油、欧式、轻奢。
+      </p>
     </main>
   );
 }
