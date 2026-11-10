@@ -111,6 +111,10 @@ def ensure_schema(engine) -> None:
             statements.append("ALTER TABLE scheme_items ADD COLUMN group_label VARCHAR(80) DEFAULT ''")
         if "display_part_id" not in item_columns:
             statements.append("ALTER TABLE scheme_items ADD COLUMN display_part_id VARCHAR(32)")
+    if "selection_item_picks" in tables:
+        pick_columns = {column["name"] for column in inspector.get_columns("selection_item_picks")}
+        if "product_id" not in pick_columns:
+            statements.append("ALTER TABLE selection_item_picks ADD COLUMN product_id VARCHAR(80)")
     relax_sqlite = engine.dialect.name == "sqlite" and _scheme_style_is_required(inspector, tables)
     relax_postgres = engine.dialect.name == "postgresql" and _scheme_style_is_required(inspector, tables)
     if statements or relax_sqlite or relax_postgres:

@@ -41,6 +41,40 @@ export type ItemPick = {
   included: boolean;
   quantity: number;
   brand_tier: "domestic" | "import" | null;
+  product_id?: string | null;
+  product_name?: string | null;
+  width_mm?: number | null;
+  depth_mm?: number | null;
+  height_mm?: number | null;
+};
+
+export type CatalogProduct = {
+  id: string;
+  part_id: string;
+  brand: string;
+  model_code: string;
+  name: string;
+  spec: string;
+  width_mm: number;
+  depth_mm: number;
+  height_mm: number;
+  domestic_price: number;
+  import_price: number;
+  status: string;
+  example: boolean;
+  source?: string;
+  note: string;
+  image_url: string;
+};
+
+export type ProjectBinding = {
+  id: string;
+  room_name: string;
+  part_id: string;
+  unit_type_id: string | null;
+  product_id: string;
+  product_name: string;
+  image_url: string;
 };
 
 export type PartGroup = {
@@ -191,6 +225,7 @@ export type Selection = {
   wall: Scheme | null;
   parts: CatalogPart[];
   lines: SelectionLine[];
+  bindings?: ProjectBinding[];
   quote: Quote;
   created_at: string;
   updated_at: string;

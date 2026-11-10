@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { projectStatus } from "@/lib/money";
 import { ADMIN_TOKEN, useToken } from "@/lib/session";
+import ProjectBindings from "@/components/ProjectBindings";
 import type { AiJob, Project } from "@/lib/types";
 
 export default function ProjectDetailPage() {
@@ -206,6 +207,8 @@ export default function ProjectDetailPage() {
         </label>
         <button type="submit">添加</button>
       </form>
+
+      {token ? <ProjectBindings projectId={project.id} units={project.unit_types} token={token} /> : null}
 
       <form className="card stack" onSubmit={sendFile}>
         <strong>上传图纸</strong>

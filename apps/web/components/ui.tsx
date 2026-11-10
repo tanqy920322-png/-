@@ -16,13 +16,17 @@ export function Steps({ current }: { current: number }) {
   );
 }
 
-export function PhoneHeader({ title, back }: { title: string; back?: string }) {
+export function PhoneHeader({ title, back, onBack }: { title: string; back?: string; onBack?: () => void }) {
   return (
     <header className="phone-bar">
       {back ? (
         <Link href={back} className="back">
           返回
         </Link>
+      ) : onBack ? (
+        <button type="button" className="ghost" onClick={onBack}>
+          返回
+        </button>
       ) : (
         <span />
       )}

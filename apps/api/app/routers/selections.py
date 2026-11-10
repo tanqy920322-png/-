@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app.deps import ActorDep, CustomerDep, Db
 from app.models import (
+    CatalogProduct,
     CustomerSelection,
     Part,
     ProcurementItem,
@@ -34,6 +35,7 @@ class ItemPickInput(BaseModel):
     included: bool = True
     quantity: float = 1
     brand_tier: str | None = None
+    product_id: str | None = None
 
 
 class LineInput(BaseModel):
@@ -88,12 +90,15 @@ def _refresh_picks(db: Db, line: SelectionLine, explicit: list[ItemPickInput] | 
                 included=spec.included if spec else include_all,
                 quantity=spec.quantity if spec else item.default_quantity,
                 brand_tier=(spec.brand_tier if spec and spec.brand_tier else line.brand_tier or "domestic"),
+                product_id=spec.product_id if spec and spec.product_id else None,
             )
             db.add(pick)
         elif spec is not None:
             pick.included = spec.included
             pick.quantity = spec.quantity
             pick.brand_tier = spec.brand_tier or pick.brand_tier or "domestic"
+            if spec.product_id:
+                pick.product_id = spec.product_id
 
 
 def _upsert_line(
@@ -175,6 +180,12 @@ def _validate_line(db: Db, selection: CustomerSelection, line: LineInput) -> Non
                 raise HTTPException(status_code=400, detail="数量需要大于 0")
             if pick.brand_tier is not None and pick.brand_tier not in BRAND_TIERS:
                 raise HTTPException(status_code=400, detail="品牌档位只能是国产或进口")
+            if pick.product_id:
+                product = db.get(CatalogProduct, pick.product_id)
+                piece = db.get(SchemeItem, pick.item_id)
+                expected = piece.display_part_id if piece and piece.display_part_id else line.part_id
+                if product is None or product.status != "confirmed" or product.part_id != expected:
+                    raise HTTPException(status_code=400, detail="示例产品与这一件的品类不一致")
 
 
 def _apply_update(db: Db, selection: CustomerSelection, body: SelectionUpdate) -> None:

@@ -288,3 +288,63 @@ def test_nine_parts_and_addon_quote(client):
     )
     assert without_night.status_code == 200
     assert without_night.json()["quote"]["total"] == 40789.8
+
+
+def test_example_library_import_binding_and_fallback_model(client):
+    from app.services.sample_pack import build_image_zip, build_manual_pdf
+
+    products = client.get("/api/products").json()
+    assert len(products) >= 9 * 36
+    sanitary = [item for item in products if item["part_id"] == "sanitary"]
+    assert len(sanitary) >= 36
+    assert sanitary[0]["example"] is True
+    assert sanitary[0]["import_price"] > sanitary[0]["domestic_price"]
+    image = client.get(sanitary[0]["image_url"])
+    assert image.status_code == 200
+    assert b"<svg" in image.content
+    admin = login_admin(client)
+    imported = client.post(
+        "/api/admin/products/import",
+        headers=auth(admin),
+        files={"file": ("manual.pdf", build_manual_pdf(), "application/pdf")},
+    )
+    assert imported.status_code == 200
+    pending = imported.json()["products"]
+    assert len(pending) == 6
+    assert pending[0]["status"] == "pending"
+    assert pending[0]["name"] == "示例平顶漆"
+    public_ids = {item["id"] for item in client.get("/api/products").json()}
+    assert pending[0]["id"] not in public_ids
+    confirmed = client.post(f"/api/admin/products/{pending[0]['id']}/confirm", headers=auth(admin))
+    assert confirmed.status_code == 200
+    assert confirmed.json()["id"] in {item["id"] for item in client.get("/api/products").json()}
+    packed = client.post(
+        "/api/admin/products/import",
+        headers=auth(admin),
+        files={"file": ("pack.zip", build_image_zip(), "application/zip")},
+    )
+    assert packed.status_code == 200
+    assert packed.json()["imported"] == 6
+    project = client.get("/api/projects/GZ2019-003").json()
+    bound = client.post(
+        f"/api/admin/projects/{project['id']}/bindings",
+        headers=auth(admin),
+        json={
+            "unit_type_id": project["unit_types"][0]["id"],
+            "room_name": "客厅",
+            "part_id": "sanitary",
+            "product_id": sanitary[0]["id"],
+        },
+    )
+    assert bound.status_code == 200
+    assert bound.json()["product"]["id"] == sanitary[0]["id"]
+    job = client.post(
+        "/api/model-jobs",
+        headers=auth(admin),
+        json={"part_id": "cabinetry", "name": "示例通用衣柜", "image_names": ["front.png"]},
+    )
+    assert job.status_code == 200
+    body = job.json()
+    assert body["status"] == "fallback"
+    assert body["product"]["height_mm"] >= 2400
+    assert "付费" in body["message"]

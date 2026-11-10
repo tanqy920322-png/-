@@ -4,7 +4,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.constants import CATEGORY_LABELS, KIND_LABELS
-from app.models import Asset, Part, Project, Scheme, SelectionLine, Style, UnitType
+from app.models import Asset, Part, Project, ProjectBinding, Scheme, SelectionLine, Style, UnitType
 from app.services.quote import (
     PricedPart,
     QuoteResult,
@@ -218,13 +218,18 @@ def quote_for_selection(db: Session, selection) -> QuoteResult:
                 title = display.name if display else part.name
                 room = (pick.item.room_name or "").strip()
                 label = f"{title}·{room}·{pick.item.name}" if room else f"{title}·{pick.item.name}"
+                unit_price = as_decimal(pick.item.unit_price)
+                if pick.product is not None and pick.product.status == "confirmed":
+                    chosen = pick.product.import_price if (pick.brand_tier or line.brand_tier) == "import" else pick.product.domestic_price
+                    unit_price = as_decimal(chosen)
+                    label = f"{label}·{pick.product.model_code}"
                 parts.append(
                     PricedPart(
                         part_id=f"{display_id}#{pick.scheme_item_id}",
                         part_name=label,
                         scheme_id=line.scheme_id,
                         scheme_name=pick.item.group_label or pick.item.name,
-                        unit_price=as_decimal(pick.item.unit_price),
+                        unit_price=unit_price,
                         pricing="each",
                         quantity=as_decimal(pick.quantity or 1),
                         brand_tier=pick.brand_tier or line.brand_tier,
@@ -330,6 +335,11 @@ def line_dict(line: SelectionLine) -> dict:
                 "included": bool(pick.included),
                 "quantity": num(pick.quantity or 1),
                 "brand_tier": pick.brand_tier,
+                "product_id": pick.product_id,
+                "product_name": None if pick.product is None else pick.product.name,
+                "width_mm": None if pick.product is None else pick.product.width_mm,
+                "depth_mm": None if pick.product is None else pick.product.depth_mm,
+                "height_mm": None if pick.product is None else pick.product.height_mm,
             }
             for pick in line.picks or []
         ],
@@ -351,6 +361,18 @@ def selection_dict(db: Session, selection) -> dict:
         "wall": None if selection.wall_scheme is None else scheme_dict(selection.wall_scheme),
         "parts": part_catalog(db, selection.style_id),
         "lines": [line_dict(line) for line in sorted(selection.lines or [], key=lambda item: item.part_id)],
+        "bindings": [
+            {
+                "id": row.id,
+                "room_name": row.room_name or "",
+                "part_id": row.part_id,
+                "unit_type_id": row.unit_type_id,
+                "product_id": row.product_id,
+                "product_name": row.product.name if row.product is not None else "",
+                "image_url": f"/api/products/{row.product_id}/image.svg",
+            }
+            for row in db.scalars(select(ProjectBinding).where(ProjectBinding.project_id == selection.project_id)).all()
+        ],
         "quote": quote,
         "created_at": iso(selection.created_at),
         "updated_at": iso(selection.updated_at),

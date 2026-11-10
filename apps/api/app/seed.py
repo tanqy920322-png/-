@@ -21,6 +21,7 @@ from app.models import (
     Style,
     UnitType,
 )
+from app.services.catalog_seed import seed_example_products
 from app.services.importer import parse_price_table
 
 logger = logging.getLogger(__name__)
@@ -434,5 +435,6 @@ def seed(db: Session) -> None:
     _upsert_catalog_prices(db, catalog)
     _ensure_sample_prices(db, project)
     _ensure_demo(db, catalog, project, units)
+    seed_example_products(db)
     db.commit()
     logger.info("seed ready: project %s, styles %s", project.code, len(catalog["styles"]))

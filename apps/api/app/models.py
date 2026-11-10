@@ -276,9 +276,64 @@ class SelectionItemPick(Base):
     included: Mapped[bool] = mapped_column(Boolean, default=False)
     quantity: Mapped[float] = mapped_column(Numeric(8, 2), default=1)
     brand_tier: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    product_id: Mapped[str | None] = mapped_column(ForeignKey("catalog_products.id"), nullable=True)
 
     line: Mapped[SelectionLine] = relationship(back_populates="picks")
     item: Mapped[SchemeItem] = relationship()
+    product: Mapped["CatalogProduct | None"] = relationship()
+
+
+class CatalogProduct(Base):
+    """Example SKU. Names and pictures are made for this prototype, not brand photography."""
+
+    __tablename__ = "catalog_products"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    part_id: Mapped[str] = mapped_column(ForeignKey("parts.id"), index=True)
+    brand: Mapped[str] = mapped_column(String(80))
+    model_code: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    spec: Mapped[str] = mapped_column(String(200), default="")
+    width_mm: Mapped[int] = mapped_column(Integer, default=0)
+    depth_mm: Mapped[int] = mapped_column(Integer, default=0)
+    height_mm: Mapped[int] = mapped_column(Integer, default=0)
+    domestic_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    import_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    status: Mapped[str] = mapped_column(String(16), default="confirmed", index=True)
+    example: Mapped[bool] = mapped_column(Boolean, default=True)
+    source: Mapped[str] = mapped_column(String(24), default="preset")
+    note: Mapped[str] = mapped_column(Text, default="")
+
+
+class ProjectBinding(Base):
+    """A product hung on a project room and part by the fit-out engineer."""
+
+    __tablename__ = "project_bindings"
+    __table_args__ = (
+        UniqueConstraint("project_id", "unit_type_id", "room_name", "part_id", name="uq_project_binding"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
+    unit_type_id: Mapped[str | None] = mapped_column(ForeignKey("unit_types.id"), nullable=True)
+    room_name: Mapped[str] = mapped_column(String(40), default="")
+    part_id: Mapped[str] = mapped_column(ForeignKey("parts.id"), index=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("catalog_products.id"))
+    note: Mapped[str] = mapped_column(String(200), default="")
+
+    product: Mapped[CatalogProduct] = relationship()
+
+
+class LibraryModel(Base):
+    __tablename__ = "library_models"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    format: Mapped[str] = mapped_column(String(8))
+    storage_key: Mapped[str] = mapped_column(String(512))
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class WorkerJob(Base):
