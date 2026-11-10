@@ -13,18 +13,89 @@ export type Placement = {
   height_mm: number;
 };
 
-const KIND_COLOR: Record<string, string> = {
-  sofa: "#e7d7c8",
-  cabinetry: "#c4a574",
-  sanitary: "#d5e4ea",
-  entry_door: "#8c6239",
-  kitchen_appliance: "#c5c7ca",
-  lighting: "#f0d7a4",
-  switch_socket: "#f7f4ee",
-  ceiling: "#f3ead8",
-  wall: "#efe4d4",
-  floor: "#d9c4a4",
-};
+function material(color: string, roughness = 0.62) {
+  return new THREE.MeshStandardMaterial({ color, roughness });
+}
+
+function addBox(group: THREE.Group, width: number, height: number, depth: number, x: number, y: number, z: number, color: string) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+}
+
+function standIn(item: Placement, width: number, depth: number, height: number) {
+  const group = new THREE.Group();
+  const text = `${item.kind} ${item.label}`;
+  const w = Math.max(width, 0.18);
+  const d = Math.max(depth, 0.12);
+  const h = Math.max(height, 0.16);
+  if (text.includes("花洒")) {
+    addBox(group, 0.04, 0.7, 0.04, -w * 0.2, 1.5, 0, "#c5ccd0");
+    addBox(group, w * 0.7, 0.05, 0.06, 0, 1.82, 0, "#b7c0c4");
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 20), material("#e8eef0", 0.35));
+    head.rotation.z = Math.PI / 2;
+    head.position.set(w * 0.25, 1.82, 0);
+    group.add(head);
+    return { group, lift: 0 };
+  }
+  if (text.includes("马桶") || (item.kind === "sanitary" && !text.includes("龙头") && !text.includes("菜盆"))) {
+    addBox(group, w * 0.62, h * 0.34, d * 0.34, 0, h * 0.78, -d * 0.22, "#f4f6f6");
+    addBox(group, w * 0.92, h * 0.32, d * 0.78, 0, h * 0.18, d * 0.08, "#fbfbfb");
+    addBox(group, w * 0.7, h * 0.07, d * 0.5, 0, h * 0.38, d * 0.1, "#d5dee2");
+    return { group, lift: 0 };
+  }
+  if (text.includes("龙头") || text.includes("面盆") || text.includes("菜盆")) {
+    addBox(group, w, h * 0.35, d, 0, h * 0.2, 0, "#f3f1ec");
+    addBox(group, w * 0.55, 0.06, d * 0.45, 0, h * 0.42, 0, "#d5e6ea");
+    addBox(group, 0.04, h * 0.45, 0.04, 0, h * 0.7, -d * 0.1, "#c5ccd0");
+    return { group, lift: 0 };
+  }
+  if (item.kind === "lighting" || text.includes("灯")) {
+    const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.03, 16), material("#d9d3c6"));
+    canopy.position.y = 0.12;
+    group.add(canopy);
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.05, Math.max(w, 0.16) / 2, Math.max(h, 0.18), 20), material("#f4d7a2", 0.4));
+    shade.position.y = 0;
+    group.add(shade);
+    return { group, lift: 2.25 };
+  }
+  if (item.kind === "cabinetry" || text.includes("柜")) {
+    addBox(group, w, h * 0.92, d, 0, h * 0.5, 0, "#d7b88a");
+    addBox(group, w * 0.46, h * 0.78, 0.02, -w * 0.24, h * 0.52, d * 0.52, "#f0e2c8");
+    addBox(group, w * 0.46, h * 0.78, 0.02, w * 0.24, h * 0.52, d * 0.52, "#e7d3b0");
+    addBox(group, w, h * 0.06, d * 1.02, 0, h * 0.04, 0, "#8c6239");
+    return { group, lift: 0 };
+  }
+  if (item.kind === "sofa" || text.includes("沙发")) {
+    addBox(group, w, h * 0.42, d, 0, h * 0.24, 0, "#f4efe8");
+    addBox(group, w, h * 0.55, d * 0.22, 0, h * 0.62, -d * 0.38, "#e7d7c8");
+    addBox(group, w * 0.12, h * 0.48, d * 0.9, -w * 0.46, h * 0.4, 0, "#efe4d6");
+    addBox(group, w * 0.12, h * 0.48, d * 0.9, w * 0.46, h * 0.4, 0, "#efe4d6");
+    return { group, lift: 0 };
+  }
+  if (item.kind === "entry_door" || text.includes("入户门") || text.includes("门扇")) {
+    addBox(group, w, h, 0.06, 0, h / 2, 0, "#6e4b2a");
+    addBox(group, w * 0.78, h * 0.9, 0.05, 0, h * 0.48, 0.04, "#a87445");
+    addBox(group, 0.03, 0.12, 0.04, w * 0.28, h * 0.48, 0.08, "#f0e2c8");
+    return { group, lift: 0 };
+  }
+  if (text.includes("烟机")) {
+    addBox(group, w * 0.2, h * 0.4, d * 0.2, 0, h * 0.8, 0, "#d5d7d8");
+    addBox(group, w, h * 0.18, d, 0, h * 0.5, 0, "#eceeef");
+    return { group, lift: 1.5 };
+  }
+  if (item.kind === "kitchen_appliance") {
+    addBox(group, w, h, d, 0, h / 2, 0, "#e6e7e8");
+    addBox(group, w * 0.7, h * 0.35, 0.02, 0, h * 0.62, d * 0.52, "#2c3338");
+    return { group, lift: 0 };
+  }
+  if (item.kind === "switch_socket") {
+    addBox(group, Math.max(w, 0.12), Math.max(h, 0.16), 0.03, 0, 0, 0, "#f7f4ee");
+    return { group, lift: 1.15 };
+  }
+  addBox(group, w, h, d, 0, h / 2, 0, "#e7d3b0");
+  return { group, lift: 0 };
+}
 
 export default function RoomPlacement({
   rooms,
@@ -95,17 +166,14 @@ export default function RoomPlacement({
         );
         slab.position.set(x, 0, z);
         root.add(slab);
-        const items = placements.filter((item) => item.room === room.name);
+        const items = placements.filter((piece) => piece.room === room.name);
         items.slice(0, 6).forEach((item, piece) => {
-          const w = Math.min(span * 0.8, Math.max(0.08, item.width_mm / 1000));
-          const d = Math.min(span * 0.7, Math.max(0.05, item.depth_mm / 1000));
-          const h = Math.min(2.5, Math.max(0.04, item.height_mm / 1000));
-          const mesh = new THREE.Mesh(
-            new THREE.BoxGeometry(w, h, d),
-            new THREE.MeshStandardMaterial({ color: KIND_COLOR[item.kind] || "#ddd2c3", roughness: 0.72 }),
-          );
-          mesh.position.set(x - span / 2 + 0.2 + (piece % 3) * (span / 3), h / 2, z - span / 4 + Math.floor(piece / 3) * 0.45);
-          root.add(mesh);
+          const w = Math.min(span * 0.72, Math.max(0.22, item.width_mm / 1000));
+          const d = Math.min(span * 0.62, Math.max(0.16, item.depth_mm / 1000));
+          const h = Math.min(2.4, Math.max(0.2, item.height_mm / 1000));
+          const { group, lift } = standIn(item, w, d, h);
+          group.position.set(x - span * 0.22 + (piece % 3) * (span / 3.2), lift, z - span * 0.12 + Math.floor(piece / 3) * 0.42);
+          root.add(group);
         });
       });
     };
