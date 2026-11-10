@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import CatalogProduct
+from app.models import CatalogProduct, ProjectBinding
 from app.services.sizes import DEFAULT_SIZES
 
 BRANDS = ("素白示例", "北境示例", "澄木示例", "青澜示例")
@@ -66,6 +66,38 @@ def seed_example_products(db: Session) -> int:
             count += 1
     db.flush()
     return count
+
+
+DEMO_BINDINGS = (
+    ("bind-gz-living-ceiling", "客厅", "ceiling", "sku-ceiling-01"),
+    ("bind-gz-living-wall", "客厅", "wall", "sku-wall-01"),
+    ("bind-gz-living-floor", "客厅", "floor", "sku-floor-01"),
+    ("bind-gz-living-light", "客厅", "lighting", "sku-lighting-01"),
+    ("bind-gz-master-cab", "主卧", "cabinetry", "sku-cabinetry-01"),
+    ("bind-gz-bath-san", "公卫", "sanitary", "sku-sanitary-01"),
+    ("bind-gz-entry-door", "玄关", "entry_door", "sku-entry_door-01"),
+)
+
+
+def seed_demo_bindings(db: Session, project_id: str, unit_type_id: str) -> None:
+    for binding_id, room_name, part_id, product_id in DEMO_BINDINGS:
+        if db.get(CatalogProduct, product_id) is None:
+            continue
+        row = db.get(ProjectBinding, binding_id)
+        fields = {
+            "project_id": project_id,
+            "unit_type_id": unit_type_id,
+            "room_name": room_name,
+            "part_id": part_id,
+            "product_id": product_id,
+            "note": "演示项目预挂的示例型号，不是品牌实拍。",
+        }
+        if row is None:
+            db.add(ProjectBinding(id=binding_id, **fields))
+        else:
+            for key, value in fields.items():
+                setattr(row, key, value)
+    db.flush()
 
 
 def confirmed_count(db: Session) -> int:

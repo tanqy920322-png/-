@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { API_BASE, api, ApiError, downloadFile } from "@/lib/api";
+import { ChineseFile } from "@/components/ui";
 import { ADMIN_TOKEN, useToken } from "@/lib/session";
 import type { CatalogProduct } from "@/lib/types";
 
@@ -12,6 +13,7 @@ export default function LibraryPage() {
   const { token } = useToken(ADMIN_TOKEN);
   const [pending, setPending] = useState<CatalogProduct[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [modelUrl, setModelUrl] = useState("/models/door-sample.glb");
@@ -24,6 +26,7 @@ export default function LibraryPage() {
       api<CatalogProduct[]>("/api/products", { token: auth }),
     ]);
     setPending(waiting);
+    setCatalog(all);
     const next: Record<string, number> = {};
     all.forEach((item) => {
       next[item.part_id] = (next[item.part_id] || 0) + 1;
@@ -103,6 +106,35 @@ export default function LibraryPage() {
           </div>
         ))}
       </div>
+      <section className="stack">
+        <h2>各类示例</h2>
+        <p className="fine">每类取一件示意图。图是程序绘制的示例，不是品牌实拍。</p>
+        <div className="sample-grid">
+          {["ceiling", "wall", "floor", "cabinetry", "sanitary", "entry_door", "kitchen_appliance", "lighting", "switch_socket"].map((part) => {
+            const sample = catalog.find((item) => item.part_id === part);
+            if (!sample) return null;
+            const title =
+              {
+                ceiling: "天花",
+                wall: "墙面",
+                floor: "地面",
+                cabinetry: "全屋定制",
+                sanitary: "洁具",
+                entry_door: "入户门",
+                kitchen_appliance: "厨房电器",
+                lighting: "灯具",
+                switch_socket: "开关插座",
+              }[part] || part;
+            return (
+              <article key={part}>
+                <img src={`${API_BASE}${sample.image_url}`} alt={sample.name} />
+                <strong>{title}</strong>
+                <p className="fine">{sample.name}</p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
       <section className="card stack">
         <strong>导入手册或图包</strong>
         <p className="fine">PDF 手册或 zip 图包会进入待确认。确认之后客户才看得到。</p>
@@ -114,11 +146,9 @@ export default function LibraryPage() {
             下载示例图包
           </button>
         </div>
-        <input
-          type="file"
+        <ChineseFile
           accept=".pdf,.zip,application/pdf,application/zip"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
+          onFile={(file) => {
             if (file) uploadPack(file);
           }}
         />
@@ -167,11 +197,9 @@ export default function LibraryPage() {
             看示例柜
           </button>
         </div>
-        <input
-          type="file"
+        <ChineseFile
           accept=".glb,.gltf,.fbx,.obj"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
+          onFile={(file) => {
             if (file) uploadModel(file).catch((err) => setError(err.message));
           }}
         />

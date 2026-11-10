@@ -27,7 +27,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   return (
     <div className="admin-shell">
       <aside className="admin-side">
-        <strong>精装选配</strong>
+        <strong>面客系统</strong>
         {LINKS.map((link) => {
           const on = link.href === "/admin" ? pathname === "/admin" : pathname.startsWith(link.href);
           return (

@@ -52,7 +52,7 @@ docker compose down -v
 docker compose up -d
 ```
 
-如果本地用的是 SQLite（例如 `DATABASE_URL=sqlite+pysqlite:///./var/fitout.db`，文件在 `apps/api/var/fitout.db`），先停掉 API，再删库后重启，让九类 SKU 重新播种：
+如果本地用的是 SQLite（例如 `DATABASE_URL=sqlite+pysqlite:///./var/fitout.db`，文件在 `apps/api/var/fitout.db`），先停掉 API，再删库后重启。演示项目 `gz2019-003` 会重新挂上客厅天花/墙面/地面/灯具、主卧柜、公卫洁具和玄关入户门。旧库不会自动补这些挂品：
 
 ```bash
 rm -f apps/api/var/fitout.db

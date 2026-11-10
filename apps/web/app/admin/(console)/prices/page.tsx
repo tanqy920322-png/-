@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, downloadFile } from "@/lib/api";
+import { ChineseFile } from "@/components/ui";
 import { yuan } from "@/lib/money";
 import { ADMIN_TOKEN, useToken } from "@/lib/session";
 import type { Meta, ProcurementTable, Project } from "@/lib/types";
@@ -91,7 +92,7 @@ export default function PricesPage() {
           标题
           <input value={title} placeholder="可留空，默认用文件名" onChange={(event) => setTitle(event.target.value)} />
         </label>
-        <input name="file" type="file" accept=".csv,.xlsx" required />
+        <ChineseFile name="file" accept=".csv,.xlsx" required />
         <div className="row-actions">
           <button type="submit">导入 CSV / Excel</button>
           <button

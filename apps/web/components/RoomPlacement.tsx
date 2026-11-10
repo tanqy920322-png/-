@@ -13,6 +13,26 @@ export type Placement = {
   height_mm: number;
 };
 
+function roomLabel(name: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 72;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.clearRect(0, 0, 256, 72);
+    ctx.fillStyle = "rgba(255,250,243,0.92)";
+    ctx.fillRect(18, 8, 220, 56);
+    ctx.fillStyle = "#2c2924";
+    ctx.font = "600 36px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(name, 128, 38);
+  }
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
+  sprite.scale.set(1.15, 0.32, 1);
+  return sprite;
+}
+
 function material(color: string, roughness = 0.62) {
   return new THREE.MeshStandardMaterial({ color, roughness });
 }
@@ -166,8 +186,21 @@ export default function RoomPlacement({
         );
         slab.position.set(x, 0, z);
         root.add(slab);
+        const tag = roomLabel(room.name);
+        tag.position.set(x, 0.42, z);
+        root.add(tag);
         const items = placements.filter((piece) => piece.room === room.name);
-        items.slice(0, 6).forEach((item, piece) => {
+        const dressed = [...items];
+        if (room.name === "客厅" && !dressed.some((piece) => piece.kind === "lighting" || piece.label.includes("灯"))) {
+          dressed.unshift({ room: room.name, label: "示意吊灯", kind: "lighting", width_mm: 320, depth_mm: 320, height_mm: 280 });
+        }
+        if (room.name === "玄关" && !dressed.some((piece) => piece.kind === "entry_door" || piece.label.includes("入户门"))) {
+          dressed.unshift({ room: room.name, label: "示意入户门", kind: "entry_door", width_mm: 900, depth_mm: 80, height_mm: 2100 });
+        }
+        if (room.name === "客厅" && !dressed.some((piece) => piece.kind === "sofa")) {
+          dressed.unshift({ room: room.name, label: "示例沙发", kind: "sofa", width_mm: 2200, depth_mm: 900, height_mm: 780 });
+        }
+        dressed.slice(0, 6).forEach((item, piece) => {
           const w = Math.min(span * 0.72, Math.max(0.22, item.width_mm / 1000));
           const d = Math.min(span * 0.62, Math.max(0.16, item.depth_mm / 1000));
           const h = Math.min(2.4, Math.max(0.2, item.height_mm / 1000));
@@ -176,6 +209,11 @@ export default function RoomPlacement({
           root.add(group);
         });
       });
+      const living = Math.max(0, list.findIndex((room) => room.name === "客厅"));
+      const focus = (living % columns) * 2.4;
+      const depth = Math.floor(living / columns) * 2.4;
+      controls.target.set(focus, 0.9, depth);
+      camera.position.set(focus + 0.4, 2.35, depth + 3.35);
     };
     draw();
     let frame = 0;

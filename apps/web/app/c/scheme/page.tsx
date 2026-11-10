@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { api, ApiError, downloadFile } from "@/lib/api";
 import { selectionStatus } from "@/lib/money";
 import { CUSTOMER_TOKEN, useQueryParam, useToken } from "@/lib/session";
-import { PhoneHeader, QuoteLines, Steps } from "@/components/ui";
+import { ChineseFile, PhoneHeader, QuoteLines, Steps } from "@/components/ui";
 import type { AiJob, ExportTicket, Selection } from "@/lib/types";
 
 const ScenePreview = dynamic(() => import("@/components/ScenePreview"), { ssr: false });
@@ -129,11 +129,7 @@ export default function SchemePage() {
           </div>
           <label className="field">
             上传一张家具照片（场景生成占位）
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(event) => uploadFurniture(event.target.files?.[0])}
-            />
+            <ChineseFile accept="image/png,image/jpeg,image/webp" onFile={(file) => file && uploadFurniture(file)} />
           </label>
           <p className="fine">照片会进档案。生成效果将接入阿里云百炼或火山引擎，当前只返回占位任务。</p>
         </>

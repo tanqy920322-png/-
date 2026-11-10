@@ -19,12 +19,19 @@ export default function MeshViewer({ url, format }: { url: string; format: strin
     if (!element || !url) return;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setClearColor(0xe7e0d4, 1);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.45;
+    renderer.setClearColor(0xf3eee6, 1);
     const scene = new THREE.Scene();
-    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.3);
-    sun.position.set(2, 4, 3);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.8));
+    scene.add(new THREE.HemisphereLight(0xfff8ee, 0xe7d3b0, 1.35));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+    sun.position.set(2.4, 4.5, 3.2);
     scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xffe6c4, 1.5);
+    fill.position.set(-2.5, 2.2, -1.5);
+    scene.add(fill);
     const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
     camera.position.set(1.6, 1.4, 2.2);
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -36,11 +43,16 @@ export default function MeshViewer({ url, format }: { url: string; format: strin
         const mesh = child as THREE.Mesh;
         if (!mesh.isMesh) return;
         mesh.geometry.computeVertexNormals();
-        const tint = mesh.name.includes("门扇") ? "#8c6239" : mesh.name.includes("门框") ? "#c4a574" : "#d9c4a4";
+        const tint = mesh.name.includes("门扇") ? "#e2b06a" : mesh.name.includes("门框") ? "#f3d7a8" : "#e8c48a";
         const paint = (material: THREE.Material) => {
           const next = material.clone() as THREE.MeshStandardMaterial;
-          if (next.color) next.color.set(tint);
-          if ("roughness" in next) next.roughness = 0.55;
+          next.color?.set(tint);
+          next.metalness = 0;
+          next.roughness = 0.42;
+          next.side = THREE.DoubleSide;
+          next.emissive = next.emissive || new THREE.Color(0, 0, 0);
+          next.emissive.set("#4a3018");
+          next.emissiveIntensity = 0.18;
           return next;
         };
         mesh.material = Array.isArray(mesh.material) ? mesh.material.map(paint) : paint(mesh.material);
@@ -104,7 +116,11 @@ export default function MeshViewer({ url, format }: { url: string; format: strin
       {meshes.map((name, index) => (
         <label key={`${name}-${index}`} className="row-actions">
           {name}
-          <input type="color" defaultValue="#c4a574" onChange={(event) => paint(index, event.target.value)} />
+          <input
+            type="color"
+            defaultValue={name.includes("门扇") ? "#e2b06a" : "#f3d7a8"}
+            onChange={(event) => paint(index, event.target.value)}
+          />
         </label>
       ))}
     </div>

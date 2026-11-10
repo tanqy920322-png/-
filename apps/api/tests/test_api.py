@@ -326,6 +326,9 @@ def test_example_library_import_binding_and_fallback_model(client):
     assert packed.status_code == 200
     assert packed.json()["imported"] == 6
     project = client.get("/api/projects/GZ2019-003").json()
+    seeded = client.get(f"/api/projects/{project['id']}/bindings").json()
+    hung = {(row["room_name"], row["part_id"]) for row in seeded}
+    assert {("客厅", "ceiling"), ("主卧", "cabinetry"), ("玄关", "entry_door")} <= hung
     bound = client.post(
         f"/api/admin/projects/{project['id']}/bindings",
         headers=auth(admin),

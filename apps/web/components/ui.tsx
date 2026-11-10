@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useState } from "react";
 import type { Quote } from "@/lib/types";
 import { yuan } from "@/lib/money";
 
@@ -33,6 +34,39 @@ export function PhoneHeader({ title, back, onBack }: { title: string; back?: str
       <h1>{title}</h1>
       <span />
     </header>
+  );
+}
+
+export function ChineseFile({
+  accept,
+  name,
+  required,
+  onFile,
+}: {
+  accept: string;
+  name?: string;
+  required?: boolean;
+  onFile?: (file: File | null) => void;
+}) {
+  const [filename, setFilename] = useState("");
+  return (
+    <div className="file-pick">
+      <label className="secondary">
+        选择文件
+        <input
+          name={name}
+          type="file"
+          accept={accept}
+          required={required}
+          onChange={(event) => {
+            const file = event.target.files?.[0] || null;
+            setFilename(file?.name || "");
+            onFile?.(file);
+          }}
+        />
+      </label>
+      <span>{filename || "尚未选择文件"}</span>
+    </div>
   );
 }
 

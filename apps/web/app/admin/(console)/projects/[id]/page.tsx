@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
+import { ChineseFile } from "@/components/ui";
 import { projectStatus } from "@/lib/money";
 import { ADMIN_TOKEN, useToken } from "@/lib/session";
 import ProjectBindings from "@/components/ProjectBindings";
@@ -234,7 +235,7 @@ export default function ProjectDetailPage() {
           </select>
         </label>
         {upload.replace_asset_id ? <p className="fine">将替换：{upload.replace_asset_id}</p> : null}
-        <input type="file" accept=".dwg,.pdf,.png,.jpg,.jpeg,.webp" onChange={(event) => setUpload({ ...upload, file: event.target.files?.[0] || null })} />
+        <ChineseFile accept=".dwg,.pdf,.png,.jpg,.jpeg,.webp" onFile={(file) => setUpload({ ...upload, file })} />
         <button type="submit" disabled={!upload.file}>
           上传
         </button>
