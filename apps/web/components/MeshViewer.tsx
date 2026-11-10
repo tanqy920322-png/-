@@ -36,11 +36,14 @@ export default function MeshViewer({ url, format }: { url: string; format: strin
         const mesh = child as THREE.Mesh;
         if (!mesh.isMesh) return;
         mesh.geometry.computeVertexNormals();
-        if (Array.isArray(mesh.material)) {
-          mesh.material = mesh.material.map((item) => item.clone());
-        } else {
-          mesh.material = mesh.material.clone();
-        }
+        const tint = mesh.name.includes("门扇") ? "#8c6239" : mesh.name.includes("门框") ? "#c4a574" : "#d9c4a4";
+        const paint = (material: THREE.Material) => {
+          const next = material.clone() as THREE.MeshStandardMaterial;
+          if (next.color) next.color.set(tint);
+          if ("roughness" in next) next.roughness = 0.55;
+          return next;
+        };
+        mesh.material = Array.isArray(mesh.material) ? mesh.material.map(paint) : paint(mesh.material);
         found.push(mesh);
       });
       const box = new THREE.Box3().setFromObject(object);

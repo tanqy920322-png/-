@@ -127,18 +127,21 @@ export default function LibraryPage() {
         <h2>待人工确认</h2>
         {pending.length === 0 ? <p className="muted">现在没有待确认的型号。</p> : null}
         {pending.map((item) => (
-          <article key={item.id} className="card row-actions" style={{ justifyContent: "space-between" }}>
+          <article key={item.id} className="card pending-card">
+            <img src={`${API_BASE}${item.image_url}`} alt={item.name} />
             <div>
               <strong>
                 {item.model_code} · {item.name}
               </strong>
-              <span className="fine">
-                {item.spec} · 国产 {item.domestic_price} / 进口 {item.import_price}
-              </span>
+              <p className="fine">
+                {item.spec}
+                <br />
+                国产 {item.domestic_price} 元 · 进口 {item.import_price} 元
+              </p>
+              <button type="button" onClick={() => confirm(item.id)}>
+                确认入库
+              </button>
             </div>
-            <button type="button" onClick={() => confirm(item.id)}>
-              确认入库
-            </button>
           </article>
         ))}
       </section>

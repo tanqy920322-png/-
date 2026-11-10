@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { API_BASE, api, ApiError } from "@/lib/api";
 import type { CatalogProduct, ProjectBinding, UnitType } from "@/lib/types";
 
 const PARTS = [
@@ -129,6 +129,13 @@ export default function ProjectBindings({
             ))}
           </select>
         </label>
+        {form.product_id ? (
+          <img
+            className="bind-preview"
+            src={`${API_BASE}/api/products/${form.product_id}/image.svg`}
+            alt="当前选中的示例产品"
+          />
+        ) : null}
         <button type="submit" disabled={!form.product_id}>
           挂到项目
         </button>

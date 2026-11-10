@@ -63,6 +63,7 @@ export default function ConfigurePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [zoom, setZoom] = useState<{ src: string; title: string } | null>(null);
 
   useEffect(() => {
     if (ready && !token) router.replace("/c/login");
@@ -336,14 +337,20 @@ export default function ConfigurePage() {
               const imagePart = item.display_part_id || partId;
               return (
                 <article key={item.id} className="card piece">
-                  <img src={thumb(imagePart, item.name, pick?.product_id)} alt="" />
-                  <div className="stack">
+                  <button
+                    type="button"
+                    className="piece-photo"
+                    onClick={() => setZoom({ src: thumb(imagePart, item.name, pick?.product_id), title: item.group_label || item.name })}
+                  >
+                    <img src={thumb(imagePart, item.name, pick?.product_id)} alt={item.group_label || item.name} />
+                  </button>
+                  <div className="piece-meta">
                     <label className="row-actions">
                       <input type="checkbox" checked={included} onChange={(event) => commit(item, { included: event.target.checked })} />
                       <strong>{item.group_label || item.name}</strong>
                     </label>
-                    <span className="fine">{pick?.product_name || "未换库内型号"} · {item.unit_price} 元起</span>
-                    <div className="row-actions">
+                    <span className="fine">{pick?.product_name || "示意图，不是品牌实拍"} · {item.unit_price} 元起</span>
+                    <div className="piece-controls">
                       <label className="field">
                         数量
                         <input
@@ -383,13 +390,15 @@ export default function ConfigurePage() {
                           <button
                             key={product.id}
                             type="button"
-                            className={pick?.product_id === product.id ? "scheme on" : "scheme"}
+                            className={pick?.product_id === product.id ? "scheme on sku-card" : "scheme sku-card"}
                             onClick={() => commit(item, { included: true, product_id: product.id })}
                           >
-                            <img src={`${API_BASE}${product.image_url}`} alt="" />
+                            <img src={`${API_BASE}${product.image_url}`} alt={product.name} />
                             <strong>{product.name}</strong>
                             <span className="fine">
-                              {product.spec} · 国产 {product.domestic_price} / 进口 {product.import_price}
+                              {product.spec}
+                              <br />
+                              国产 {product.domestic_price} 元 · 进口 {product.import_price} 元
                             </span>
                           </button>
                         ))}
@@ -403,6 +412,11 @@ export default function ConfigurePage() {
           </div>
         ) : null}
 
+        {zoom ? (
+          <button type="button" className="lightbox" onClick={() => setZoom(null)} aria-label="关闭大图">
+            <img src={zoom.src} alt={zoom.title} />
+          </button>
+        ) : null}
         <div className="sticky-total">
           <div>
             <div className="fine">部位合计</div>
