@@ -337,7 +337,15 @@ export default function ConfigurePage() {
             )}
             {(selection.substitutes || []).length ? (
               <p className="effect-banner">
-                仅用于效果展示，不列入采购。外形接近、能看出来是同一类、同一款式方向。这不是付费重建的质量。单张照片可能看不清背面和细部。部位合计不含这些照片。
+                仅用于效果展示，不列入采购。
+                <br />
+                外形接近、能看出来是同一类、同一款式方向。
+                <br />
+                这不是付费重建的质量。
+                <br />
+                单张照片可能看不清背面和细部。
+                <br />
+                部位合计不含这些照片。
               </p>
             ) : null}
             {sofaPhoto && view === "finish" ? (

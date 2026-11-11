@@ -26,6 +26,15 @@ const PARTS = [
   { id: "kitchen_appliance", name: "厨房电器", slot: "厨电" },
 ];
 
+function dotStyle(x: number, y: number): React.CSSProperties {
+  const cx = Math.min(0.96, Math.max(0.04, x));
+  const cy = Math.min(0.96, Math.max(0.05, y));
+  let transform = "translate(-50%, -120%)";
+  if (x > 0.8) transform = "translate(-100%, -120%)";
+  else if (x < 0.14) transform = "translate(0, -120%)";
+  return { left: `${cx * 100}%`, top: `${cy * 100}%`, transform };
+}
+
 function PlanCanvas({ vectors }: { vectors: number[][][] }) {
   const width = 1000;
   const height = 640;
@@ -276,15 +285,18 @@ export default function PlanMarks({
               <span
                 key={mark.id}
                 className={`plan-dot ${mark.role}`}
-                style={{ left: `${mark.x * 100}%`, top: `${mark.y * 100}%` }}
+                style={dotStyle(mark.x, mark.y)}
                 onClick={(event) => event.stopPropagation()}
               >
-                {mark.room_name} · {mark.slot_label}
-                <br />
-                {mark.role === "empty" ? "未挂品" : mark.product_name}
+                {mark.slot_label}
+                {mark.role === "empty" ? " · 未挂" : ""}
               </span>
             ))}
-            {pending ? <span className="plan-dot pending" style={{ left: `${pending.x * 100}%`, top: `${pending.y * 100}%` }}>新的点</span> : null}
+            {pending ? (
+              <span className="plan-dot pending" style={dotStyle(pending.x, pending.y)}>
+                新的点
+              </span>
+            ) : null}
           </div>
           <div className="grid-2">
             <label className="field">

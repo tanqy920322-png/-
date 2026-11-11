@@ -135,7 +135,11 @@ export default function SchemePage() {
             要在房间里看照片效果，请回到九类选配，用「用照片看效果」。那里的示意件不进报价。这一处仍只是收下照片，不会生成模型。
           </p>
           {(selection.substitutes || []).length ? (
-            <p className="effect-banner">仅用于效果展示，不列入采购。外形接近、能看出来是同一类、同一款式方向。</p>
+            <p className="effect-banner">
+              仅用于效果展示，不列入采购。
+              <br />
+              外形接近、能看出来是同一类、同一款式方向。
+            </p>
           ) : null}
         </>
       )}

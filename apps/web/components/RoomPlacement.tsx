@@ -53,8 +53,77 @@ function sprite(text: string, width = 256) {
     ctx.fillText(text, width / 2, 38);
   }
   const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
-  tag.scale.set(Math.max(0.9, text.length * 0.22), 0.28, 1);
+  tag.scale.set(0.42, 0.12, 1);
   return tag;
+}
+
+type RoomRect = { minX: number; maxX: number; minZ: number; maxZ: number };
+
+function rectOf(line: number[][]): RoomRect | null {
+  if (line.length < 4) return null;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  line.forEach(([nx, ny]) => {
+    const world = toWorld(nx, ny);
+    minX = Math.min(minX, world.x);
+    maxX = Math.max(maxX, world.x);
+    minZ = Math.min(minZ, world.z);
+    maxZ = Math.max(maxZ, world.z);
+  });
+  if (maxX - minX < 0.35 || maxZ - minZ < 0.35) return null;
+  return { minX, maxX, minZ, maxZ };
+}
+
+function rectContains(rect: RoomRect, x: number, z: number) {
+  return x > rect.minX + 0.04 && x < rect.maxX - 0.04 && z > rect.minZ + 0.04 && z < rect.maxZ - 0.04;
+}
+
+function smallestRoom(rects: RoomRect[], x: number, z: number) {
+  return rects
+    .filter((rect) => rectContains(rect, x, z))
+    .sort((a, b) => (a.maxX - a.minX) * (a.maxZ - a.minZ) - (b.maxX - b.minX) * (b.maxZ - b.minZ))[0];
+}
+
+function cameraInsideRoom(rect: RoomRect, world: { x: number; z: number }) {
+  const inset = 0.28;
+  const minX = rect.minX + inset;
+  const maxX = rect.maxX - inset;
+  const minZ = rect.minZ + inset;
+  const maxZ = rect.maxZ - inset;
+  const space = {
+    px: maxX - world.x,
+    nx: world.x - minX,
+    pz: maxZ - world.z,
+    nz: world.z - minZ,
+  };
+  const pick: { dir: keyof typeof space } = { dir: "pz" };
+  if (space.pz < 0.7) {
+    (Object.keys(space) as (keyof typeof space)[]).forEach((key) => {
+      if (space[key] > space[pick.dir]) pick.dir = key;
+    });
+  }
+  const dir = pick.dir;
+  const step = Math.min(1.35, Math.max(0.72, space[dir] * 0.78));
+  let camX = world.x;
+  let camZ = world.z;
+  if (dir === "pz") camZ = Math.min(maxZ, world.z + step);
+  if (dir === "nz") camZ = Math.max(minZ, world.z - step);
+  if (dir === "px") camX = Math.min(maxX, world.x + step);
+  if (dir === "nx") camX = Math.max(minX, world.x - step);
+  if (dir === "pz" || dir === "nz") {
+    const lateral = space.px >= space.nx ? Math.min(0.32, Math.max(0, space.px) * 0.45) : -Math.min(0.32, Math.max(0, space.nx) * 0.45);
+    camX = Math.min(maxX, Math.max(minX, world.x + lateral));
+  } else {
+    const lateral = space.pz >= space.nz ? Math.min(0.32, Math.max(0, space.pz) * 0.45) : -Math.min(0.32, Math.max(0, space.nz) * 0.45);
+    camZ = Math.min(maxZ, Math.max(minZ, world.z + lateral));
+  }
+  return {
+    x: Math.min(maxX, Math.max(minX, camX)),
+    y: 1.08,
+    z: Math.min(maxZ, Math.max(minZ, camZ)),
+  };
 }
 
 function paint(color: string, roughness = 0.62) {
@@ -191,8 +260,9 @@ function decorate(item: Placement, width: number, depth: number, height: number,
     group.add(card);
   }
   if (item.substitute) {
-    const tag = sprite("效果展示");
-    tag.position.y = Math.max(height, 0.35) + 0.28;
+    const tag = sprite("效果展示", 220);
+    tag.scale.set(0.34, 0.1, 1);
+    tag.position.set(Math.max(width * 0.46, 0.2), Math.max(height, 0.32) + 0.14, -Math.max(depth, 0.12) * 0.15);
     group.add(tag);
   }
   group.traverse((child) => {
@@ -329,10 +399,14 @@ export default function RoomPlacement({
     resize();
 
     let stopped = false;
+    const roomTags: THREE.Sprite[] = [];
+    let roomRects: RoomRect[] = [];
     const texturesPromise = loadTextures(placements.flatMap((item) => [item.photoUrl || "", item.photoBackUrl || ""]));
 
     const draw = (textures: Map<string, THREE.Texture>) => {
       if (stopped) return;
+      roomTags.length = 0;
+      roomRects = (vectors || []).map(rectOf).filter((rect): rect is RoomRect => rect !== null);
       root.traverse((child) => {
         const mesh = child as THREE.Mesh;
         mesh.geometry?.dispose?.();
@@ -417,6 +491,20 @@ export default function RoomPlacement({
             root.add(lamp);
           }
         });
+        const labeled = new Set<string>();
+        placements.forEach((item) => {
+          if (item.x == null || item.y == null || labeled.has(item.room)) return;
+          const spot = toWorld(item.x, item.y);
+          const room = smallestRoom(roomRects, spot.x, spot.z);
+          if (!room) return;
+          labeled.add(item.room);
+          const tag = sprite(item.room, 180);
+          tag.scale.set(0.58, 0.16, 1);
+          tag.position.set((room.minX + room.maxX) / 2, 1.42, room.minZ + 0.42);
+          tag.userData.roomTag = true;
+          root.add(tag);
+          roomTags.push(tag);
+        });
         const living = placements.find((item) => item.room === "客厅" && item.x != null && item.y != null);
         const anchor = living ? toWorld(living.x || 0.3, living.y || 0.4) : { x: -1.2, z: -0.4 };
         const lamp = new THREE.PointLight("#ffe0bf", 3.5, 6, 2);
@@ -449,6 +537,7 @@ export default function RoomPlacement({
             root.add(wall);
           });
           const tag = sprite(room.name);
+          tag.scale.set(0.9, 0.26, 1);
           tag.position.set(x, 0.72, z);
           root.add(tag);
           const items = placements.filter((piece) => piece.room === room.name);
@@ -470,25 +559,50 @@ export default function RoomPlacement({
       api.current?.frame(modeRef.current, shotRef.current || undefined);
     };
 
+    const snap = (kind: string, place: () => void) => {
+      controls.enabled = kind === "orbit";
+      controls.enableDamping = false;
+      controls.update();
+      place();
+      camera.lookAt(controls.target);
+      camera.updateProjectionMatrix();
+      controls.update();
+      roomTags.forEach((tag) => {
+        tag.visible = kind !== "piece";
+      });
+    };
     api.current = {
       frame(kind, norm) {
-        controls.enabled = kind === "orbit";
         if (kind === "front") {
-          camera.position.set(0, 1.85, 4.8);
-          controls.target.set(-0.4, 0.85, -0.6);
+          snap(kind, () => {
+            camera.fov = 48;
+            camera.position.set(0.15, 7.6, 3.6);
+            controls.target.set(-0.35, 0.05, -1.05);
+          });
         } else if (kind === "piece" && norm) {
-          const world = toWorld(norm.x, norm.y);
-          camera.position.set(world.x + 0.45, 1.7, world.z + 2.05);
-          controls.target.set(world.x, 0.4, world.z);
+          snap(kind, () => {
+            camera.fov = 42;
+            const world = toWorld(norm.x, norm.y);
+            const room = smallestRoom(roomRects, world.x, world.z);
+            const eye = room ? cameraInsideRoom(room, world) : { x: world.x, y: 2.2, z: world.z + 1.1 };
+            camera.position.set(eye.x, eye.y, eye.z);
+            controls.target.set(world.x, 0.32, world.z);
+          });
         } else if (kind === "orbit") {
-          camera.position.set(2.4, 3.8, 4.6);
-          controls.target.set(-0.8, 0.55, -0.4);
+          snap(kind, () => {
+            camera.fov = 42;
+            camera.position.set(1.6, 5.4, 4.2);
+            controls.target.set(-0.5, 0.35, -0.6);
+          });
+          controls.enabled = true;
+          controls.enableDamping = true;
         } else {
-          camera.position.set(2.6, 3.3, 4.8);
-          controls.target.set(-1.1, 0.5, -0.5);
+          snap(kind, () => {
+            camera.fov = 42;
+            camera.position.set(1.8, 5.2, 4.4);
+            controls.target.set(-0.7, 0.3, -0.8);
+          });
         }
-        camera.lookAt(controls.target);
-        controls.update();
       },
     };
 
@@ -560,10 +674,27 @@ export default function RoomPlacement({
       </div>
       <div ref={host} className="scene-host" aria-label="可切换固定视角和旋转的示意房间" />
       <p className="fine">
-        {planned
-          ? "正视和斜向是固定视角，旋转可以拖动。墙和地面按人工点的简化平面摆，不是施工图对齐。天花留了灯槽，方便看见房间里的件。"
-          : "还没有人工点选的平面时，按房间格子示意。材质和光线比单纯色块更接近样板，仍然不是施工图。"}
-        带「效果展示」的件只贴了照片，背面没有第二张时仍是常用外形。开关这类小件会略放大，方便看清照片。
+        {planned ? (
+          <>
+            正视和斜向是固定视角，旋转可以拖动。
+            <br />
+            墙和地面按人工点的简化平面摆，不是施工图对齐。
+            <br />
+            天花留了灯槽，方便看见房间里的件。
+          </>
+        ) : (
+          <>
+            还没有人工点选的平面时，按房间格子示意。
+            <br />
+            材质和光线比单纯色块更接近样板，仍然不是施工图。
+          </>
+        )}
+        <br />
+        带「效果展示」的件只贴了照片。
+        <br />
+        背面没有第二张时，仍是常用外形。
+        <br />
+        开关这类小件会略放大，方便看清照片。
       </p>
     </div>
   );

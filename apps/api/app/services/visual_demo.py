@@ -89,7 +89,7 @@ def build_demo_svg() -> str:
             f'<rect x="{x}" y="{y}" width="{width}" height="{height}" fill="#f6f1ea" stroke="#2c2924" stroke-width="6"/>'
         )
         labels.append(
-            f'<text x="{x + width / 2}" y="{y + height / 2}" text-anchor="middle" font-size="28" fill="#2c2924">{name}</text>'
+            f'<text x="{x + 14}" y="{y + 32}" font-size="26" fill="#2c2924">{name}</text>'
         )
     body = "\n".join(rects + labels)
     return (
@@ -105,9 +105,9 @@ DEMO_MARKS = (
     ("mark-living-light", "客厅", "lighting", "灯具", *point("客厅", 0.46, 0.36)),
     ("mark-living-sofa", "客厅", "sofa", "沙发", *point("客厅", 0.42, 0.72)),
     ("mark-living-switch", "客厅", "switch_socket", "开关插座", *point("客厅", 0.9, 0.42)),
-    ("mark-bath-toilet", "公卫", "sanitary", "马桶", *point("公卫", 0.62, 0.68)),
-    ("mark-entry-door", "玄关", "entry_door", "入户门", *point("玄关", 0.5, 0.55)),
-    ("mark-master-cab", "主卧", "cabinetry", "柜体", *point("主卧", 0.32, 0.42)),
+    ("mark-bath-toilet", "公卫", "sanitary", "马桶", *point("公卫", 0.55, 0.58)),
+    ("mark-entry-door", "玄关", "entry_door", "入户门", *point("玄关", 0.5, 0.72)),
+    ("mark-master-cab", "主卧", "cabinetry", "柜体", *point("主卧", 0.42, 0.62)),
 )
 
 

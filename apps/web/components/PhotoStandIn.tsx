@@ -117,7 +117,15 @@ export default function PhotoStandIn({
     <section className="card stack" id="photo-stand-in">
       <strong>{preset ? "也可以上传照片看这一件" : "用照片看效果"}</strong>
       <p className="effect-banner">
-        仅用于效果展示，不列入采购。外形接近、能看出来是同一类、同一款式方向。照片贴在这一类的常用外形上，不重建细部。单张照片可能看不清背面和细部。这不是付费图生三维的质量。
+        仅用于效果展示，不列入采购。
+        <br />
+        外形接近、能看出来是同一类、同一款式方向。
+        <br />
+        照片贴在这一类的常用外形上，不重建细部。
+        <br />
+        单张照片可能看不清背面和细部。
+        <br />
+        这不是付费图生三维的质量。
       </p>
       {visible.length ? (
         <div className="stack">
@@ -130,10 +138,16 @@ export default function PhotoStandIn({
                 </strong>
                 <span>
                   {item.label}
-                  {item.demo ? " · 演示示意图，不是品牌实拍" : ""}
+                  {item.demo ? (
+                    <>
+                      <br />
+                      演示示意图，不是品牌实拍
+                    </>
+                  ) : null}
                   <br />
                   {item.width_mm} × {item.depth_mm} × {item.height_mm} mm
-                  {item.extra_photo_path ? " · 第二张贴在背面" : " · 背面仍是常用外形"}
+                  <br />
+                  {item.extra_photo_path ? "第二张贴在背面" : "背面仍是常用外形"}
                 </span>
               </div>
               <button className="ghost" type="button" disabled={busy} onClick={() => remove(item)}>
