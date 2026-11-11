@@ -28,7 +28,9 @@ type Finish = {
   styleId: string;
 };
 
-type Shot = { key: string; label: string; x: number; y: number };
+type Shot = { key: string; label: string; x: number; y: number; span: number };
+
+type Aim = { x: number; y: number; span?: number };
 
 const PLAN_W = 10;
 const PLAN_D = 6.4;
@@ -124,6 +126,41 @@ function cameraInsideRoom(rect: RoomRect, world: { x: number; z: number }) {
     y: 1.08,
     z: Math.min(maxZ, Math.max(minZ, camZ)),
   };
+}
+
+function cameraForLargePiece(rect: RoomRect, world: { x: number; z: number }, span: number) {
+  const inset = 0.42;
+  const minX = rect.minX + inset;
+  const maxX = rect.maxX - inset;
+  const minZ = rect.minZ + inset;
+  const maxZ = rect.maxZ - inset;
+  const space = {
+    px: Math.max(0, maxX - world.x),
+    nx: Math.max(0, world.x - minX),
+    pz: Math.max(0, maxZ - world.z),
+    nz: Math.max(0, world.z - minZ),
+  };
+  const options = [
+    { key: "px" as const, axis: "x" as const, sign: 1 },
+    { key: "nx" as const, axis: "x" as const, sign: -1 },
+    { key: "pz" as const, axis: "z" as const, sign: 1 },
+    { key: "nz" as const, axis: "z" as const, sign: -1 },
+  ].sort((a, b) => space[b.key] - space[a.key]);
+  const primary = options[0];
+  const secondary = options.find((item) => item.axis !== primary.axis) ?? options[1];
+  const want = Math.min(3.6, Math.max(2.6, span * 1.45));
+  const primaryStep = Math.min(space[primary.key] * 0.9, want);
+  const secondaryStep = Math.min(space[secondary.key] * 0.72, want * 0.62);
+  let camX = world.x;
+  let camZ = world.z;
+  if (primary.axis === "x") camX += primary.sign * primaryStep;
+  else camZ += primary.sign * primaryStep;
+  if (secondary.axis === "x") camX += secondary.sign * secondaryStep;
+  else camZ += secondary.sign * secondaryStep;
+  camX = Math.min(maxX, Math.max(minX, camX));
+  camZ = Math.min(maxZ, Math.max(minZ, camZ));
+  const dist = Math.hypot(camX - world.x, camZ - world.z);
+  return { x: camX, y: Math.min(2.7, Math.max(1.7, dist * 0.72)), z: camZ };
 }
 
 function paint(color: string, roughness = 0.62) {
@@ -301,7 +338,7 @@ async function loadTextures(urls: string[]) {
 }
 
 type CameraApi = {
-  frame: (kind: string, norm?: { x: number; y: number }) => void;
+  frame: (kind: string, norm?: Aim) => void;
 };
 
 export default function RoomPlacement({
@@ -317,7 +354,7 @@ export default function RoomPlacement({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<CameraApi | null>(null);
-  const shotRef = useRef<{ x: number; y: number } | null>(null);
+  const shotRef = useRef<Aim | null>(null);
   const modeRef = useRef("angle");
   const [mode, setMode] = useState("angle");
   const planned = Boolean(vectors?.length || placements.some((item) => item.x != null && item.y != null));
@@ -581,12 +618,17 @@ export default function RoomPlacement({
           });
         } else if (kind === "piece" && norm) {
           snap(kind, () => {
-            camera.fov = 42;
             const world = toWorld(norm.x, norm.y);
             const room = smallestRoom(roomRects, world.x, world.z);
-            const eye = room ? cameraInsideRoom(room, world) : { x: world.x, y: 2.2, z: world.z + 1.1 };
+            const large = (norm.span ?? 0) >= 1.15;
+            camera.fov = large ? 50 : 42;
+            const eye = room
+              ? large
+                ? cameraForLargePiece(room, world, norm.span ?? 1.2)
+                : cameraInsideRoom(room, world)
+              : { x: world.x, y: 2.2, z: world.z + 1.1 };
             camera.position.set(eye.x, eye.y, eye.z);
-            controls.target.set(world.x, 0.32, world.z);
+            controls.target.set(world.x, large ? 0.42 : 0.32, world.z);
           });
         } else if (kind === "orbit") {
           snap(kind, () => {
@@ -634,7 +676,7 @@ export default function RoomPlacement({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
 
-  function frame(kind: string, norm?: { x: number; y: number }) {
+  function frame(kind: string, norm?: Aim) {
     modeRef.current = kind;
     shotRef.current = norm || null;
     setMode(kind === "piece" ? `piece:${norm?.x}:${norm?.y}` : kind);
@@ -646,7 +688,13 @@ export default function RoomPlacement({
     if (!item.substitute || item.x == null || item.y == null) return;
     const key = `${item.room}-${item.label}`;
     if (shots.some((shot) => shot.key === key)) return;
-    shots.push({ key, label: item.label, x: item.x, y: item.y });
+    shots.push({
+      key,
+      label: item.label,
+      x: item.x,
+      y: item.y,
+      span: Math.max(item.width_mm, item.depth_mm, item.height_mm) / 1000,
+    });
   });
 
   return (
@@ -663,7 +711,7 @@ export default function RoomPlacement({
             key={shot.key}
             type="button"
             className={mode === `piece:${shot.x}:${shot.y}` ? "" : "secondary"}
-            onClick={() => frame("piece", { x: shot.x, y: shot.y })}
+            onClick={() => frame("piece", { x: shot.x, y: shot.y, span: shot.span })}
           >
             看{shot.label}
           </button>
