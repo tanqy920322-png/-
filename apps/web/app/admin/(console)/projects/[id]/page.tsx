@@ -8,6 +8,7 @@ import { ChineseFile } from "@/components/ui";
 import { projectStatus } from "@/lib/money";
 import { ADMIN_TOKEN, useToken } from "@/lib/session";
 import ProjectBindings from "@/components/ProjectBindings";
+import PlanMarks from "@/components/PlanMarks";
 import type { AiJob, Project } from "@/lib/types";
 
 export default function ProjectDetailPage() {
@@ -210,6 +211,7 @@ export default function ProjectDetailPage() {
       </form>
 
       {token ? <ProjectBindings projectId={project.id} units={project.unit_types} token={token} /> : null}
+      {token ? <PlanMarks projectId={project.id} units={project.unit_types} token={token} /> : null}
 
       <form className="card stack" onSubmit={sendFile}>
         <strong>上传图纸</strong>

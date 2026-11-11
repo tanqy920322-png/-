@@ -22,6 +22,7 @@ from app.models import (
     UnitType,
 )
 from app.services.catalog_seed import seed_demo_bindings, seed_example_products
+from app.services.visual_demo import seed_visual_demo
 from app.services.importer import parse_price_table
 
 logger = logging.getLogger(__name__)
@@ -438,5 +439,8 @@ def seed(db: Session) -> None:
     seed_example_products(db)
     if "A" in units:
         seed_demo_bindings(db, project.id, units["A"].id)
+        demo = catalog.get("demo") or {}
+        if demo.get("selection_id"):
+            seed_visual_demo(db, project.id, units["A"].id, demo["selection_id"])
     db.commit()
     logger.info("seed ready: project %s, styles %s", project.code, len(catalog["styles"]))

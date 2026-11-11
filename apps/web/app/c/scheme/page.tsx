@@ -131,7 +131,12 @@ export default function SchemePage() {
             上传一张家具照片（场景生成占位）
             <ChineseFile accept="image/png,image/jpeg,image/webp" onFile={(file) => file && uploadFurniture(file)} />
           </label>
-          <p className="fine">照片会进档案。生成效果将接入阿里云百炼或火山引擎，当前只返回占位任务。</p>
+          <p className="fine">
+            要在房间里看照片效果，请回到九类选配，用「用照片看效果」。那里的示意件不进报价。这一处仍只是收下照片，不会生成模型。
+          </p>
+          {(selection.substitutes || []).length ? (
+            <p className="effect-banner">仅用于效果展示，不列入采购。外形接近、能看出来是同一类、同一款式方向。</p>
+          ) : null}
         </>
       )}
     </div>

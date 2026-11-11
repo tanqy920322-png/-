@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.constants import CATEGORY_LABELS, KIND_LABELS
 from app.models import Asset, Part, Project, ProjectBinding, Scheme, SelectionLine, Style, UnitType
+from app.services.placement import active_plan, plan_dict, substitutes_for
 from app.services.quote import (
     PricedPart,
     QuoteResult,
@@ -374,9 +375,18 @@ def selection_dict(db: Session, selection) -> dict:
             for row in db.scalars(select(ProjectBinding).where(ProjectBinding.project_id == selection.project_id)).all()
         ],
         "quote": quote,
+        "substitutes": substitutes_for(db, selection.id),
+        "plan": _plan_for_selection(db, selection),
         "created_at": iso(selection.created_at),
         "updated_at": iso(selection.updated_at),
     }
+
+
+def _plan_for_selection(db: Session, selection) -> dict | None:
+    plan = active_plan(db, selection.project_id, selection.unit_type_id)
+    if plan is None:
+        return None
+    return plan_dict(db, plan)
 
 
 def selection_list_item(db: Session, selection) -> dict:

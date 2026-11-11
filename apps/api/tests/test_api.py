@@ -35,9 +35,13 @@ def test_health_and_seeded_catalog(client):
     body = project.json()
     areas = {unit["code"]: unit["finish_area_m2"] for unit in body["unit_types"]}
     assert areas == {"A": 60.6, "B": 69.6}
-    placeholders = [asset for unit in body["unit_types"] for asset in unit["assets"]]
-    assert {asset["status"] for asset in placeholders} == {"placeholder"}
-    assert any(asset["filename"].endswith(".dwg") for asset in placeholders)
+    drawings = [asset for unit in body["unit_types"] for asset in unit["assets"]]
+    by_name = {asset["filename"]: asset["status"] for asset in drawings}
+    assert by_name["A户型平面图.pdf"] == "placeholder"
+    assert by_name["A户型用量图.dwg"] == "placeholder"
+    assert by_name["B户型平面图.pdf"] == "placeholder"
+    assert by_name["B户型用量图.dwg"] == "placeholder"
+    assert by_name["A户型简化平面.svg"] == "stored"
 
 
 def test_customer_quote_updates_and_rejects_other_style(client):
@@ -169,7 +173,7 @@ def test_admin_publish_import_upload_and_exports(client):
         data={"asset_id": "asset-a-plan"},
     )
     assert recognize.status_code == 200
-    assert "Qwen" in recognize.json()["message"] or "豆包" in recognize.json()["message"]
+    assert "没有识别" in recognize.json()["message"] or "没有读取" in recognize.json()["message"]
     listed = client.get("/api/admin/selections", headers=auth(admin))
     assert any(item["id"] == selection["id"] for item in listed.json())
     demo = client.get("/api/selections/sel_demo", headers=auth(admin))

@@ -107,6 +107,18 @@ export default function HouseholdPage() {
         <div className="stack">
           <article className="card">
             <QuoteLines quote={selection.quote} />
+            {(selection.substitutes || []).length ? (
+              <div className="stack">
+                <strong>效果照片</strong>
+                <p className="effect-banner">仅用于效果展示，不列入采购。下面的合计不含这些照片。</p>
+                {(selection.substitutes || []).map((item) => (
+                  <p key={item.id}>
+                    {item.room_name} · {item.slot_label}
+                    {item.demo ? " · 演示示意图" : ""}
+                  </p>
+                ))}
+              </div>
+            ) : null}
           </article>
           <div className="row-actions">
             <button type="button" onClick={() => exportKind("quote_pdf").catch((err) => setError(err.message))}>

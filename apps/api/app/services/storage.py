@@ -32,6 +32,17 @@ class LocalObjectStorage:
         content_type = meta.read_text(encoding="utf-8") if meta.is_file() else "application/octet-stream"
         return path.read_bytes(), content_type.strip()
 
+    def delete(self, key: str) -> None:
+        try:
+            path = self._path(key)
+        except ValueError:
+            return
+        if path.is_file():
+            path.unlink()
+        meta = path.with_name(path.name + ".content-type")
+        if meta.is_file():
+            meta.unlink()
+
     def exists(self, key: str) -> bool:
         try:
             return self._path(key).is_file()

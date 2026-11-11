@@ -15,6 +15,8 @@ ASSET_KINDS: list[tuple[str, str]] = [
     ("usage_drawing", "用量图"),
     ("render", "效果图"),
     ("furniture_photo", "家具照片"),
+    ("simplified_plan", "简化平面"),
+    ("effect_photo", "效果照片"),
     ("other", "其他"),
 ]
 
