@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { applyFinish, preloadFinishTextures } from "@/components/sceneTextures";
+import { applyOfficialMap, type OfficialMaps } from "@/components/officialTexture";
 import type { MaterialSpec } from "@/lib/types";
 
 export type Placement = {
@@ -346,11 +347,13 @@ export default function RoomPlacement({
   placements,
   vectors,
   finish,
+  officialMaps,
 }: {
   rooms: { name: string; area_m2: number }[];
   placements: Placement[];
   vectors?: number[][][];
   finish?: Finish | null;
+  officialMaps?: OfficialMaps;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<CameraApi | null>(null);
@@ -368,6 +371,9 @@ export default function RoomPlacement({
     finish?.floor.color || "",
     finish?.wall.feature || "",
     finish?.ceiling.feature || "",
+    officialMaps?.ceiling || "",
+    officialMaps?.wall || "",
+    officialMaps?.floor || "",
   ].join("|");
 
   useEffect(() => {
@@ -421,7 +427,10 @@ export default function RoomPlacement({
       applyFinish(floorMat, "floor", look.floor, look.styleId);
       applyFinish(wallMat, "wall", look.wall, look.styleId);
       applyFinish(ceilingMat, "ceiling", look.ceiling, look.styleId);
-      if (floorMat.map) floorMat.map.repeat.set(5.5, 3.6);
+      if (floorMat.map && !officialMaps?.floor) floorMat.map.repeat.set(5.5, 3.6);
+      applyOfficialMap(floorMat, officialMaps?.floor, 3.2, 3.2);
+      applyOfficialMap(wallMat, officialMaps?.wall, 1.4, 1.8);
+      applyOfficialMap(ceilingMat, officialMaps?.ceiling, 2, 2);
     };
     preloadFinishTextures().then(dress);
     dress();

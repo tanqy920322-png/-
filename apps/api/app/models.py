@@ -397,6 +397,49 @@ class PlanMark(Base):
     plan: Mapped[PlanSheet] = relationship(back_populates="marks")
 
 
+class InternalSample(Base):
+    """Internal evaluation row. Not a priced catalog item and not shown as a customer SKU."""
+
+    __tablename__ = "internal_samples"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    part_id: Mapped[str] = mapped_column(String(32), index=True)
+    category_zh: Mapped[str] = mapped_column(String(40), default="")
+    brand: Mapped[str] = mapped_column(String(80))
+    origin: Mapped[str] = mapped_column(String(16), default="")
+    name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    model_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    spec: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    width_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    depth_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    height_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    kind: Mapped[str] = mapped_column(String(16), default="form")
+    verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    local_image: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_url: Mapped[str] = mapped_column(Text, default="")
+    source_title: Mapped[str] = mapped_column(Text, default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(24), default="sample_pack")
+    customer_visible: Mapped[bool] = mapped_column(Boolean, default=False)
+    priced: Mapped[bool] = mapped_column(Boolean, default=False)
+    orderable: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class GeneratedCandidate(Base):
+    """A mesh waiting for a person to confirm it. Empty until generation exists. Not customer-facing."""
+
+    __tablename__ = "generated_candidates"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    part_id: Mapped[str] = mapped_column(String(32), default="")
+    brand: Mapped[str] = mapped_column(String(80), default="")
+    model_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    label: Mapped[str] = mapped_column(String(200), default="")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class WorkerJob(Base):
     __tablename__ = "worker_jobs"
 

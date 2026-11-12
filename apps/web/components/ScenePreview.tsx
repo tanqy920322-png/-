@@ -6,6 +6,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { MaterialSpec } from "@/lib/types";
 import { applyFinish, preloadFinishTextures, shade } from "@/components/sceneTextures";
+import { applyOfficialMap, type OfficialMaps } from "@/components/officialTexture";
 
 type Look = {
   ceiling: MaterialSpec;
@@ -33,12 +34,15 @@ export default function ScenePreview({
   styleId,
   sofaPhoto,
   switchPhoto,
-}: Look & { sofaPhoto?: string | null; switchPhoto?: string | null }) {
+  officialMaps,
+}: Look & { sofaPhoto?: string | null; switchPhoto?: string | null; officialMaps?: OfficialMaps }) {
   const host = useRef<HTMLDivElement>(null);
   const applyRef = useRef<(() => void) | null>(null);
   const extrasRef = useRef<SceneExtras | null>(null);
   const lookRef = useRef<Look>({ ceiling, floor, wall, styleId });
+  const mapsRef = useRef<OfficialMaps | undefined>(officialMaps);
   lookRef.current = { ceiling, floor, wall, styleId };
+  mapsRef.current = officialMaps;
 
   useEffect(() => {
     const element = host.current;
@@ -455,6 +459,10 @@ export default function ScenePreview({
       applyFinish(floorMat, "floor", look.floor, look.styleId);
       applyFinish(ceilingMat, "ceiling", look.ceiling, look.styleId);
       applyFinish(wallMat, "wall", look.wall, look.styleId);
+      const maps = mapsRef.current;
+      applyOfficialMap(floorMat, maps?.floor, 3.2, 3.2);
+      applyOfficialMap(wallMat, maps?.wall, 1.6, 2.2);
+      applyOfficialMap(ceilingMat, maps?.ceiling, 2.2, 2.2);
       const featureSpec = {
         ...look.wall,
         color: look.wall.feature === "paint" || look.wall.feature === "gloss" ? look.wall.color : look.wall.accent,
@@ -579,6 +587,8 @@ export default function ScenePreview({
               owned?.forEach((texture) => texture.dispose());
               const photo = material.userData.photoMap as THREE.Texture | undefined;
               photo?.dispose();
+              const official = material.userData.officialMap as THREE.Texture | undefined;
+              if (official && official !== photo) official.dispose();
             }
             material.dispose();
           });
@@ -589,7 +599,7 @@ export default function ScenePreview({
     };
   }, []);
 
-  const signature = JSON.stringify({ ceiling, floor, wall, styleId });
+  const signature = JSON.stringify({ ceiling, floor, wall, styleId, officialMaps });
   useEffect(() => {
     applyRef.current?.();
   }, [signature]);

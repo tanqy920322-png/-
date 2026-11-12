@@ -9,10 +9,21 @@ import { CUSTOMER_TOKEN, useQueryParam, useToken } from "@/lib/session";
 import { DEFAULT_MM } from "@/lib/sizes";
 import { PhoneHeader, QuoteLines, Steps } from "@/components/ui";
 import PhotoStandIn, { type StandPreset } from "@/components/PhotoStandIn";
+import type { OfficialMaps } from "@/components/officialTexture";
 import type { Placement } from "@/components/RoomPlacement";
 import type { CatalogProduct as Product, ItemPick, Scheme, SchemeItem, Selection } from "@/lib/types";
 
 const PLACEABLE = new Set(["sanitary", "switch_socket", "cabinetry", "lighting", "entry_door", "kitchen_appliance"]);
+const SURFACE_NAME: Record<string, string> = { ceiling: "天花", wall: "墙面", floor: "地面" };
+
+type FinishTexture = {
+  id: string;
+  part_id: string;
+  brand: string;
+  model_code: string | null;
+  origin: string;
+  texture_url: string | null;
+};
 
 const ScenePreview = dynamic(() => import("@/components/ScenePreview"), { ssr: false });
 const RoomPlacement = dynamic(() => import("@/components/RoomPlacement"), { ssr: false });
@@ -110,10 +121,29 @@ export default function ConfigurePage() {
   const [zoom, setZoom] = useState<{ src: string; title: string } | null>(null);
   const [photos, setPhotos] = useState<Record<string, { front: string; back?: string }>>({});
   const [standPreset, setStandPreset] = useState<StandPreset | null>(null);
+  const [finishTextures, setFinishTextures] = useState<FinishTexture[]>([]);
+  const [textureChoice, setTextureChoice] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (ready && !token) router.replace("/c/login");
   }, [ready, token, router]);
+
+  useEffect(() => {
+    api<{ items: FinishTexture[] }>("/api/finish-textures")
+      .then((pack) => {
+        setFinishTextures(pack.items);
+        setTextureChoice((current) => {
+          if (Object.keys(current).length) return current;
+          const next: Record<string, string> = {};
+          for (const part of ["ceiling", "wall", "floor"]) {
+            const domestic = pack.items.find((item) => item.part_id === part && item.origin === "domestic" && item.texture_url);
+            if (domestic) next[part] = domestic.id;
+          }
+          return next;
+        });
+      })
+      .catch(() => setFinishTextures([]));
+  }, []);
 
   useEffect(() => {
     if (!token || !sid) return;
@@ -270,6 +300,11 @@ export default function ConfigurePage() {
   }
 
   const bound = (selection.bindings || []).find((item) => item.part_id === partId && (item.room_name || "整户") === (room || item.room_name || "整户"));
+  const officialMaps: OfficialMaps = {};
+  for (const part of ["ceiling", "wall", "floor"] as const) {
+    const row = finishTextures.find((item) => item.id === textureChoice[part]);
+    officialMaps[part] = row?.texture_url ? `${API_BASE}${row.texture_url}` : null;
+  }
   const sofaPhoto = (selection.substitutes || [])
     .filter((item) => item.part_id === "sofa")
     .map((item) => photos[item.id]?.front)
@@ -321,12 +356,14 @@ export default function ConfigurePage() {
                 wall={wallScheme.material}
                 sofaPhoto={sofaPhoto}
                 switchPhoto={switchPhoto}
+                officialMaps={officialMaps}
               />
             ) : (
               <RoomPlacement
                 rooms={selection.unit.rooms}
                 placements={placementsFor(selection, photos)}
                 vectors={selection.plan?.vectors}
+                officialMaps={officialMaps}
                 finish={{
                   floor: floorScheme.material,
                   wall: wallScheme.material,
@@ -335,6 +372,28 @@ export default function ConfigurePage() {
                 }}
               />
             )}
+            {finishTextures.length ? (
+              <div className="stack">
+                <p className="fine">示意贴图，不是品牌实拍，也不改变报价。</p>
+                {(["ceiling", "wall", "floor"] as const).map((part) => (
+                  <div key={part} className="row-actions">
+                    <span className="fine">{SURFACE_NAME[part]}</span>
+                    {finishTextures
+                      .filter((item) => item.part_id === part)
+                      .map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={textureChoice[part] === item.id ? "" : "secondary"}
+                          onClick={() => setTextureChoice({ ...textureChoice, [part]: item.id })}
+                        >
+                          {item.brand} {item.model_code}
+                        </button>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {(selection.substitutes || []).length ? (
               <p className="effect-banner">
                 仅用于效果展示，不列入采购。
@@ -452,6 +511,7 @@ export default function ConfigurePage() {
                 wall={wallScheme.material}
                 sofaPhoto={sofaPhoto}
                 switchPhoto={switchPhoto}
+                officialMaps={officialMaps}
               />
             ) : null}
             <p className="fine">
