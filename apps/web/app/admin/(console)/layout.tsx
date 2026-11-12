@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/admin/projects", label: "项目" },
   { href: "/admin/prices", label: "集采价表" },
   { href: "/admin/library", label: "产品库" },
+  { href: "/admin/samples", label: "内部样板" },
   { href: "/admin/selections", label: "客户方案" },
 ];
 

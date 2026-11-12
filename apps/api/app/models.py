@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     Numeric,
@@ -332,6 +333,109 @@ class LibraryModel(Base):
     filename: Mapped[str] = mapped_column(String(255))
     format: Mapped[str] = mapped_column(String(8))
     storage_key: Mapped[str] = mapped_column(String(512))
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class VisualSubstitute(Base):
+    """A customer photo on a typical-category mesh. Display only: never priced or ordered."""
+
+    __tablename__ = "visual_substitutes"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    selection_id: Mapped[str] = mapped_column(ForeignKey("customer_selections.id"), index=True)
+    part_id: Mapped[str] = mapped_column(String(32), index=True)
+    room_name: Mapped[str] = mapped_column(String(40), default="")
+    slot_label: Mapped[str] = mapped_column(String(40), default="")
+    width_mm: Mapped[int] = mapped_column(Integer, default=0)
+    depth_mm: Mapped[int] = mapped_column(Integer, default=0)
+    height_mm: Mapped[int] = mapped_column(Integer, default=0)
+    primary_asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id"))
+    secondary_asset_id: Mapped[str | None] = mapped_column(ForeignKey("assets.id"), nullable=True)
+    demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PlanSheet(Base):
+    """A simplified plan the engineer marks by hand. Not a parsed construction drawing."""
+
+    __tablename__ = "plan_sheets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
+    unit_type_id: Mapped[str] = mapped_column(ForeignKey("unit_types.id"), index=True)
+    asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id"))
+    filename: Mapped[str] = mapped_column(String(255))
+    media: Mapped[str] = mapped_column(String(16))
+    vectors: Mapped[list] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    marks: Mapped[list["PlanMark"]] = relationship(
+        back_populates="plan",
+        cascade="all, delete-orphan",
+    )
+
+
+class PlanMark(Base):
+    """One click on a simplified plan: a room or a part slot. Humans mark, the system places."""
+
+    __tablename__ = "plan_marks"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    plan_id: Mapped[str] = mapped_column(ForeignKey("plan_sheets.id"), index=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), index=True)
+    unit_type_id: Mapped[str] = mapped_column(ForeignKey("unit_types.id"), index=True)
+    room_name: Mapped[str] = mapped_column(String(40))
+    part_id: Mapped[str] = mapped_column(String(32))
+    slot_label: Mapped[str] = mapped_column(String(40), default="")
+    x: Mapped[float] = mapped_column(Float)
+    y: Mapped[float] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    plan: Mapped[PlanSheet] = relationship(back_populates="marks")
+
+
+class InternalSample(Base):
+    """Internal evaluation row. Not a priced catalog item and not shown as a customer SKU."""
+
+    __tablename__ = "internal_samples"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    part_id: Mapped[str] = mapped_column(String(32), index=True)
+    category_zh: Mapped[str] = mapped_column(String(40), default="")
+    brand: Mapped[str] = mapped_column(String(80))
+    origin: Mapped[str] = mapped_column(String(16), default="")
+    name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    model_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    spec: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    width_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    depth_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    height_mm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    kind: Mapped[str] = mapped_column(String(16), default="form")
+    verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    local_image: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_url: Mapped[str] = mapped_column(Text, default="")
+    source_title: Mapped[str] = mapped_column(Text, default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(24), default="sample_pack")
+    customer_visible: Mapped[bool] = mapped_column(Boolean, default=False)
+    priced: Mapped[bool] = mapped_column(Boolean, default=False)
+    orderable: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class GeneratedCandidate(Base):
+    """A mesh waiting for a person to confirm it. Empty until generation exists. Not customer-facing."""
+
+    __tablename__ = "generated_candidates"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    part_id: Mapped[str] = mapped_column(String(32), default="")
+    brand: Mapped[str] = mapped_column(String(80), default="")
+    model_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    label: Mapped[str] = mapped_column(String(200), default="")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
     note: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

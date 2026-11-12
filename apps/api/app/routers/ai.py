@@ -113,11 +113,11 @@ def recognize_floorplan(
         raise HTTPException(status_code=404, detail="图纸不存在")
     provider = _provider(VISION_KEYS)
     if asset.status != "stored":
-        message = "这是占位图纸，没有可识别的文件。户型识别将接入 Qwen-VL 或豆包视觉，当前返回占位结果。"
+        message = "这是占位记录，没有图纸可看。系统没有识别房间。请另交简化平面，在「施工图落位」里点选。"
     else:
-        message = "已接收图纸。户型识别将接入 Qwen-VL 或豆包视觉，当前返回占位结果，不回写房间面积。"
+        message = "图纸已收下，但系统没有读取房间和墙线。请到「施工图落位」，由人在简化平面上点选。"
     if provider == "key_present_adapter_missing":
-        message = "检测到视觉接口密钥，但适配器尚未接入，本次仍返回占位结果。"
+        message = "检测到视觉接口配置，这一轮仍然不读图、不改房间。请用「施工图落位」人工点选。"
     selection_id = asset.selection_id
     if selection_id is None:
         selection_id = db.scalar(

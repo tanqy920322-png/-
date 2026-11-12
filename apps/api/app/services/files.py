@@ -9,6 +9,8 @@ CONTENT_TYPES = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".dxf": "application/dxf",
     ".csv": "text/csv; charset=utf-8",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ".zip": "application/zip",

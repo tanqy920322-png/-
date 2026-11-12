@@ -91,6 +91,13 @@ def render_quote_pdf(selection: dict) -> bytes:
             write(f"{room['name']}  {_area(room['area_m2'])}  {mark}", 11, 6)
     else:
         write("未录入分房。", 11, 6)
+    subs = selection.get("substitutes") or []
+    if subs:
+        pdf.ln(2)
+        write("效果替代（不列入采购，不计入上面的合计）", 12, 8)
+        write("外形接近、能看出来是同一类、同一款式方向。不是付费重建的质量。", 10, 6)
+        for sub in subs:
+            write(f"{sub.get('room_name') or ''} · {sub.get('slot_label') or ''} · 仅用于效果展示，不列入采购", 11, 6)
     pdf.ln(3)
-    write("图纸与效果图以后台档案为准。三维预览为选配示意，不是施工 BIM。", 9, 5)
+    write("图纸与效果图以后台档案为准。三维预览为选配示意，不是施工图对齐。", 9, 5)
     return bytes(pdf.output())

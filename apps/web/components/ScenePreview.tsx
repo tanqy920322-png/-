@@ -6,6 +6,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { MaterialSpec } from "@/lib/types";
 import { applyFinish, preloadFinishTextures, shade } from "@/components/sceneTextures";
+import { applyOfficialMap, type OfficialMaps } from "@/components/officialTexture";
 
 type Look = {
   ceiling: MaterialSpec;
@@ -14,16 +15,34 @@ type Look = {
   styleId: string;
 };
 
+type SceneExtras = {
+  sofaSeat: THREE.MeshStandardMaterial;
+  sofaFabric: THREE.MeshStandardMaterial;
+  switchMat: THREE.MeshStandardMaterial;
+  switchPlate: THREE.Mesh;
+};
+
 const IX = 1.95;
 const IZ = 2.7;
 const H = 2.7;
 const T = 0.16;
 
-export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
+export default function ScenePreview({
+  ceiling,
+  floor,
+  wall,
+  styleId,
+  sofaPhoto,
+  switchPhoto,
+  officialMaps,
+}: Look & { sofaPhoto?: string | null; switchPhoto?: string | null; officialMaps?: OfficialMaps }) {
   const host = useRef<HTMLDivElement>(null);
   const applyRef = useRef<(() => void) | null>(null);
+  const extrasRef = useRef<SceneExtras | null>(null);
   const lookRef = useRef<Look>({ ceiling, floor, wall, styleId });
+  const mapsRef = useRef<OfficialMaps | undefined>(officialMaps);
   lookRef.current = { ceiling, floor, wall, styleId };
+  mapsRef.current = officialMaps;
 
   useEffect(() => {
     const element = host.current;
@@ -388,6 +407,15 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
     sofa.add(box(0.62, 0.16, 0.2, 0.38, 0.56, -0.22, sofaFabric));
     sofa.position.set(0.48, 0, -0.25);
     addFurn(sofa);
+    const switchMat = new THREE.MeshStandardMaterial({ color: "#f4f1ea", roughness: 0.46 });
+    const switchPlate = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.02), switchMat);
+    switchPlate.position.set(1.42, 1.12, -2.52);
+    switchPlate.visible = false;
+    addFurn(switchPlate);
+    sofaSeat.userData.baseColor = "#ddd4c8";
+    sofaFabric.userData.baseColor = "#b7aa9c";
+    switchMat.userData.baseColor = "#f4f1ea";
+    extrasRef.current = { sofaSeat, sofaFabric, switchMat, switchPlate };
     addFurn(box(1.05, 0.035, 0.55, 0.48, 0.38, -1.05, furnDark, { cast: true, receive: true }));
     addFurn(box(0.08, 0.36, 0.08, 0.1, 0.18, -1.22, furnDark));
     addFurn(box(0.08, 0.36, 0.08, 0.86, 0.18, -1.22, furnDark));
@@ -431,6 +459,10 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
       applyFinish(floorMat, "floor", look.floor, look.styleId);
       applyFinish(ceilingMat, "ceiling", look.ceiling, look.styleId);
       applyFinish(wallMat, "wall", look.wall, look.styleId);
+      const maps = mapsRef.current;
+      applyOfficialMap(floorMat, maps?.floor, 3.2, 3.2);
+      applyOfficialMap(wallMat, maps?.wall, 1.6, 2.2);
+      applyOfficialMap(ceilingMat, maps?.ceiling, 2.2, 2.2);
       const featureSpec = {
         ...look.wall,
         color: look.wall.feature === "paint" || look.wall.feature === "gloss" ? look.wall.color : look.wall.accent,
@@ -553,6 +585,10 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
             if (material instanceof THREE.MeshStandardMaterial) {
               const owned = material.userData.ownedMaps as THREE.Texture[] | undefined;
               owned?.forEach((texture) => texture.dispose());
+              const photo = material.userData.photoMap as THREE.Texture | undefined;
+              photo?.dispose();
+              const official = material.userData.officialMap as THREE.Texture | undefined;
+              if (official && official !== photo) official.dispose();
             }
             material.dispose();
           });
@@ -563,10 +599,53 @@ export default function ScenePreview({ ceiling, floor, wall, styleId }: Look) {
     };
   }, []);
 
-  const signature = JSON.stringify({ ceiling, floor, wall, styleId });
+  const signature = JSON.stringify({ ceiling, floor, wall, styleId, officialMaps });
   useEffect(() => {
     applyRef.current?.();
   }, [signature]);
+
+  useEffect(() => {
+    const extras = extrasRef.current;
+    if (!extras) return;
+    let cancelled = false;
+    const loader = new THREE.TextureLoader();
+    const paintPhoto = (url: string | null | undefined, materials: THREE.MeshStandardMaterial[], mesh?: THREE.Mesh) => {
+      const previous = materials[0]?.userData.photoMap as THREE.Texture | undefined;
+      if (!url) {
+        previous?.dispose();
+        materials.forEach((material) => {
+          material.map = null;
+          material.userData.photoMap = null;
+          material.color.set(material.userData.baseColor || "#dddddd");
+          material.needsUpdate = true;
+        });
+        if (mesh) mesh.visible = false;
+        return;
+      }
+      loader.load(url, (texture) => {
+        if (cancelled) {
+          texture.dispose();
+          return;
+        }
+        if (previous && previous !== texture) previous.dispose();
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 8;
+        materials.forEach((material) => {
+          material.map = texture;
+          material.color.set("#ffffff");
+          material.roughness = 0.58;
+          material.userData.photoMap = texture;
+          material.needsUpdate = true;
+        });
+        if (mesh) mesh.visible = true;
+      });
+    };
+    paintPhoto(sofaPhoto, [extras.sofaSeat, extras.sofaFabric]);
+    paintPhoto(switchPhoto, [extras.switchMat], extras.switchPlate);
+    return () => {
+      cancelled = true;
+    };
+  }, [sofaPhoto, switchPhoto]);
 
   return <div ref={host} className="scene-host" aria-label="拖动可旋转的客餐厅，天花、地面和墙面材质随方案变化" />;
 }

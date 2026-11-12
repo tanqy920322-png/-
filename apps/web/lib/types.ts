@@ -201,6 +201,55 @@ export type Quote = {
   };
 };
 
+export type VisualSubstitute = {
+  id: string;
+  part_id: string;
+  part_name: string;
+  room_name: string;
+  slot_label: string;
+  width_mm: number;
+  depth_mm: number;
+  height_mm: number;
+  photo_path: string;
+  extra_photo_path: string | null;
+  demo: boolean;
+  method: string;
+  paid_api_called: boolean;
+  priced: boolean;
+  orderable: boolean;
+  label: string;
+  promise: string;
+  limits: string[];
+};
+
+export type PlanMarkView = {
+  id: string;
+  room_name: string;
+  part_id: string;
+  slot_label: string;
+  x: number;
+  y: number;
+  product_name: string;
+  width_mm: number;
+  depth_mm: number;
+  height_mm: number;
+  role: "material" | "product" | "empty";
+};
+
+export type PlanView = {
+  id: string;
+  project_id?: string;
+  unit_type_id?: string;
+  filename: string;
+  media: string;
+  note: string;
+  active: boolean;
+  vectors: number[][][];
+  marks: PlanMarkView[];
+  honesty: string;
+  preview_path?: string;
+};
+
 export type Selection = {
   id: string;
   status: string;
@@ -226,6 +275,8 @@ export type Selection = {
   parts: CatalogPart[];
   lines: SelectionLine[];
   bindings?: ProjectBinding[];
+  substitutes?: VisualSubstitute[];
+  plan?: PlanView | null;
   quote: Quote;
   created_at: string;
   updated_at: string;

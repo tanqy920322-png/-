@@ -177,7 +177,9 @@ export default function LibraryPage() {
       </section>
       <section className="card stack">
         <strong>通用件</strong>
-        <p className="fine">这里不连接付费生模。填写名称后，按品类默认尺寸做一件通用模型并入库。</p>
+        <p className="fine">
+          这里只按品类常用尺寸做一件通用方块，不连接付费生模。图生三维未完成，待评清单在「内部样板」。
+        </p>
         <label className="field">
           名称
           <input value={jobName} onChange={(event) => setJobName(event.target.value)} />
