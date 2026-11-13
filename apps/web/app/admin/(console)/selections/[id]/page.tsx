@@ -121,6 +121,9 @@ export default function HouseholdPage() {
             ) : null}
           </article>
           <div className="row-actions">
+            <Link className="btn" href={`/admin/selections/${selection.id}/print`}>
+              打印报价单
+            </Link>
             <button type="button" onClick={() => exportKind("quote_pdf").catch((err) => setError(err.message))}>
               下载报价 PDF
             </button>

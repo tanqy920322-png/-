@@ -71,6 +71,8 @@ export default function PlanMarks({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null);
+  const [scaleText, setScaleText] = useState("");
+  const [heightText, setHeightText] = useState("");
   const [room, setRoom] = useState("客厅");
   const [partId, setPartId] = useState("sanitary");
   const [slot, setSlot] = useState("马桶");
@@ -94,6 +96,11 @@ export default function PlanMarks({
     // token and project are stable for this page
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, token]);
+
+  useEffect(() => {
+    setScaleText(plan?.scale_m_per_unit == null ? "" : String(plan.scale_m_per_unit));
+    setHeightText(plan?.wall_height_m == null ? "" : String(plan.wall_height_m));
+  }, [plan?.id, plan?.scale_m_per_unit, plan?.wall_height_m]);
 
   useEffect(() => {
     if (!plan) return;
@@ -157,6 +164,36 @@ export default function PlanMarks({
       setNote("客户房间会按这张图上的点摆放。");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "没有切换");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveMeasure(event: React.FormEvent) {
+    event.preventDefault();
+    if (!plan) return;
+    const scale = scaleText.trim() === "" ? null : Number(scaleText);
+    const height = heightText.trim() === "" ? null : Number(heightText);
+    if (scale != null && !(scale > 0)) {
+      setError("比例要大于 0。图纸没写就留空，不要填估计值。");
+      return;
+    }
+    if (height != null && !(height > 0)) {
+      setError("层高要大于 0。图纸没写就留空，不要填估计值。");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const saved = await api<PlanView>(`/api/admin/projects/${projectId}/plans/${plan.id}/measure`, {
+        method: "PUT",
+        token,
+        body: JSON.stringify({ scale_m_per_unit: scale, wall_height_m: height }),
+      });
+      setPlans((current) => current.map((item) => (item.id === saved.id ? { ...saved, preview_path: item.preview_path } : item)));
+      setNote("已记下这张图上的比例和层高。没填的项仍然留空，打印时不会估一个数。");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "没有记下比例");
     } finally {
       setBusy(false);
     }
@@ -263,6 +300,23 @@ export default function PlanMarks({
           </div>
           <p className="fine">{plan.note}</p>
           <p className="fine">{plan.honesty}</p>
+          <form className="stack" onSubmit={saveMeasure}>
+            <strong>图上写明的比例和层高</strong>
+            <p className="fine">只填写图纸已经写明的数。不知道就留空。留空时打印报价单的数量也留空，不会估。</p>
+            <div className="grid-2">
+              <label className="field">
+                每图面单位多少米
+                <input value={scaleText} onChange={(event) => setScaleText(event.target.value)} inputMode="decimal" placeholder="留空" />
+              </label>
+              <label className="field">
+                层高（米）
+                <input value={heightText} onChange={(event) => setHeightText(event.target.value)} inputMode="decimal" placeholder="留空" />
+              </label>
+            </div>
+            <button className="secondary" type="submit" disabled={busy}>
+              记下比例和层高
+            </button>
+          </form>
           <div
             className="plan-board"
             onClick={(event) => {

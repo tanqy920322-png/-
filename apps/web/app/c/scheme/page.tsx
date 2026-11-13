@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError, downloadFile } from "@/lib/api";
@@ -120,6 +121,9 @@ export default function SchemePage() {
             <button type="button" disabled={busy} onClick={submit}>
               提交给开发商
             </button>
+            <Link className="btn secondary" href={sid ? `/print/quote?sid=${sid}` : "/print/quote"}>
+              打印报价单
+            </Link>
             <button className="secondary" type="button" disabled={busy} onClick={() => exportKind("quote_pdf")}>
               下载报价 PDF
             </button>

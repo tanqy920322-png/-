@@ -24,6 +24,11 @@ router = APIRouter(tags=["visuals"])
 PLAN_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".dxf"}
 
 
+class MeasureInput(BaseModel):
+    scale_m_per_unit: float | None = None
+    wall_height_m: float | None = None
+
+
 class MarkInput(BaseModel):
     room_name: str = Field(min_length=1, max_length=40)
     part_id: str
@@ -314,6 +319,23 @@ def activate_plan(project_id: str, plan_id: str, admin: AdminDep, db: Db):
     if plan is None or plan.project_id != project_id:
         raise HTTPException(status_code=404, detail="没有这张简化平面")
     _activate(db, plan)
+    db.flush()
+    return plan_dict(db, plan, preview_path=_preview_path(project_id, plan.id))
+
+
+@router.put("/api/admin/projects/{project_id}/plans/{plan_id}/measure")
+def set_plan_measure(project_id: str, plan_id: str, body: MeasureInput, admin: AdminDep, db: Db):
+    """Record a scale or storey height the drawing already states. Blank stays blank."""
+    del admin
+    plan = db.get(PlanSheet, plan_id)
+    if plan is None or plan.project_id != project_id:
+        raise HTTPException(status_code=404, detail="没有这张简化平面")
+    if body.scale_m_per_unit is not None and body.scale_m_per_unit <= 0:
+        raise HTTPException(status_code=400, detail="比例要大于 0。图纸没写比例就留空，不要填估计值。")
+    if body.wall_height_m is not None and body.wall_height_m <= 0:
+        raise HTTPException(status_code=400, detail="层高要大于 0。图纸没写层高就留空，不要填估计值。")
+    plan.scale_m_per_unit = body.scale_m_per_unit
+    plan.wall_height_m = body.wall_height_m
     db.flush()
     return plan_dict(db, plan, preview_path=_preview_path(project_id, plan.id))
 

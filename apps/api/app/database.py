@@ -111,6 +111,12 @@ def ensure_schema(engine) -> None:
             statements.append("ALTER TABLE scheme_items ADD COLUMN group_label VARCHAR(80) DEFAULT ''")
         if "display_part_id" not in item_columns:
             statements.append("ALTER TABLE scheme_items ADD COLUMN display_part_id VARCHAR(32)")
+    if "plan_sheets" in tables:
+        plan_columns = {column["name"] for column in inspector.get_columns("plan_sheets")}
+        if "scale_m_per_unit" not in plan_columns:
+            statements.append("ALTER TABLE plan_sheets ADD COLUMN scale_m_per_unit FLOAT")
+        if "wall_height_m" not in plan_columns:
+            statements.append("ALTER TABLE plan_sheets ADD COLUMN wall_height_m FLOAT")
     if "selection_item_picks" in tables:
         pick_columns = {column["name"] for column in inspector.get_columns("selection_item_picks")}
         if "product_id" not in pick_columns:

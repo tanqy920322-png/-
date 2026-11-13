@@ -8,7 +8,7 @@ from sqlalchemy import text
 from app.config import get_settings
 from app.database import ensure_schema, get_engine, get_session_factory
 from app.models import Base
-from app.routers import admin, ai, assets, auth, catalog, exports, internal_samples, library, selections, visuals
+from app.routers import admin, ai, assets, auth, catalog, exports, internal_samples, library, selections, takeoff, visuals
 from app.seed import seed
 from app.services.queue import probe_redis
 
@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(library.router)
     app.include_router(visuals.router)
     app.include_router(internal_samples.router)
+    app.include_router(takeoff.router)
 
     @app.get("/api/health")
     @app.get("/health")
