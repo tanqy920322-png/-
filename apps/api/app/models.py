@@ -368,6 +368,8 @@ class PlanSheet(Base):
     filename: Mapped[str] = mapped_column(String(255))
     media: Mapped[str] = mapped_column(String(16))
     vectors: Mapped[list] = mapped_column(JSON, default=list)
+    scale_m_per_unit: Mapped[float | None] = mapped_column(Float, nullable=True)
+    wall_height_m: Mapped[float | None] = mapped_column(Float, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     note: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

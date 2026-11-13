@@ -388,3 +388,48 @@ table.data th { color: var(--muted); font-weight: 500; }
   .stage { padding: 0; }
   .phone { border-radius: 0; min-height: 100dvh; box-shadow: none; }
 }
+
+.quote-sheet {
+  max-width: 980px;
+  margin: 0 auto;
+  background: white;
+  color: #1d1a16;
+  padding: 28px 24px 48px;
+}
+.quote-brand {
+  text-align: center;
+  letter-spacing: 0.4em;
+  font-size: 14px;
+  margin: 0;
+}
+.quote-sheet h1 {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 560;
+  margin: 4px 0 12px;
+}
+.quote-meta { text-align: center; }
+.quote-total {
+  font-size: 18px;
+  margin: 12px 0;
+}
+.quote-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 4px;
+}
+.quote-table th,
+.quote-table td {
+  border: 1px solid #222;
+  padding: 6px 8px;
+  font-size: 13px;
+  vertical-align: top;
+  text-align: left;
+}
+.quote-table th { background: #f6f1ea; font-weight: 560; }
+.quote-sheet h2 { font-size: 18px; margin: 18px 0 6px; }
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  .quote-sheet { max-width: none; padding: 0; }
+}

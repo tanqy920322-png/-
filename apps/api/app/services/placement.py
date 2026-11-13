@@ -77,6 +77,8 @@ def plan_dict(db: Session, plan: PlanSheet, *, preview_path: str | None = None) 
         "note": plan.note or "",
         "active": bool(plan.active),
         "vectors": plan.vectors or [],
+        "scale_m_per_unit": None if plan.scale_m_per_unit is None else float(plan.scale_m_per_unit),
+        "wall_height_m": None if plan.wall_height_m is None else float(plan.wall_height_m),
         "marks": [mark_dict(mark, bindings.get((mark.room_name, mark.part_id))) for mark in marks],
         "honesty": PLAN_HONESTY,
     }

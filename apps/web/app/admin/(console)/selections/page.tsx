@@ -55,6 +55,8 @@ export default function SelectionsPage() {
               <td>{formatWhen(item.updated_at)}</td>
               <td>
                 <Link href={`/admin/selections/${item.id}`}>档案</Link>
+                {" · "}
+                <Link href={`/admin/selections/${item.id}/print`}>打印报价单</Link>
               </td>
             </tr>
           ))}

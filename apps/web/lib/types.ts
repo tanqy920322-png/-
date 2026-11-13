@@ -245,6 +245,8 @@ export type PlanView = {
   note: string;
   active: boolean;
   vectors: number[][][];
+  scale_m_per_unit?: number | null;
+  wall_height_m?: number | null;
   marks: PlanMarkView[];
   honesty: string;
   preview_path?: string;
@@ -347,6 +349,52 @@ export type AiJob = {
 export type Meta = {
   procurement_categories: { id: string; name: string }[];
   asset_kinds: { id: string; name: string }[];
+};
+
+export type TakeoffLine = {
+  seq?: number;
+  room_name?: string;
+  item: string;
+  unit: string;
+  quantity: number | null;
+  craft: string;
+  unit_price: number | null;
+  amount: number | null;
+  remark: string;
+  included_in_subtotal: boolean;
+  priced: boolean;
+};
+
+export type TakeoffSheet = {
+  institution: string;
+  title: string;
+  selection_id: string;
+  customer_name: string;
+  customer_phone: string;
+  project_name: string;
+  project_code: string;
+  unit_name: string;
+  style_name: string;
+  selection_quote: Quote;
+  selection_note: string;
+  geometry_note: string;
+  mapping: { mode: string; model_hook: string; honesty: string };
+  plan: {
+    id: string;
+    filename: string;
+    has_scale: boolean;
+    scale_m_per_unit: number | null;
+    wall_height_m: number | null;
+    closed_rooms: string[];
+    unclosed_rooms: string[];
+    missing_from_plan: string[];
+    drawing_missing: boolean;
+  };
+  sections: { id: string; title: string; subtotal: number; lines: TakeoffLine[] }[];
+  exclusions: TakeoffLine[];
+  part_subtotal: number;
+  unpriced: { item: string; remark: string; priced: boolean; included_in_subtotal: boolean }[];
+  rules: string[];
 };
 
 export type ExportTicket = {
