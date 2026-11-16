@@ -1,0 +1,79 @@
+{
+  "provider": "腾讯云混元图生三维",
+  "customer_visible": false,
+  "priced": false,
+  "orderable": false,
+  "paid_api_called": false,
+  "postpaid_enabled": false,
+  "free_pack_exhausted": true,
+  "mesh_dir_name": "生模评测",
+  "items": [
+    {
+      "priority": 1,
+      "part_id": "sanitary",
+      "category_zh": "洁具",
+      "brand": "恒洁",
+      "model_code": "HC0508PT",
+      "status": "已确认入库",
+      "preview": "previews/HC0508PT.png",
+      "mesh_filename": "HC0508PT.glb",
+      "note": "生成件，已确认进入内部样板。不给客户看，不计价，不能下单。"
+    },
+    {
+      "priority": 2,
+      "part_id": "sanitary",
+      "category_zh": "洁具",
+      "brand": "TOTO",
+      "model_code": "CW887REBTM",
+      "status": "已确认入库",
+      "preview": "previews/CW887REBTM.png",
+      "mesh_filename": "CW887REBTM.glb",
+      "note": "生成件，已确认进入内部样板。不给客户看，不计价，不能下单。"
+    },
+    {
+      "priority": 3,
+      "part_id": "switch_socket",
+      "category_zh": "开关插座",
+      "brand": "Schneider",
+      "brand_zh": "施耐德",
+      "model_code": "E8331L1_DG",
+      "status": "已确认入库",
+      "preview": "previews/E8331L1_DG.png",
+      "mesh_filename": "E8331L1_DG.glb",
+      "note": "生成件，已确认进入内部样板。不给客户看，不计价，不能下单。"
+    },
+    {
+      "priority": 4,
+      "part_id": "lighting",
+      "category_zh": "灯具",
+      "brand": "雷士",
+      "model_code": "NXXY1157",
+      "status": "已确认入库",
+      "preview": "previews/NXXY1157.png",
+      "mesh_filename": "NXXY1157.glb",
+      "note": "生成件，已确认进入内部样板。不给客户看，不计价，不能下单。"
+    },
+    {
+      "priority": 5,
+      "part_id": "entry_door",
+      "category_zh": "入户门",
+      "brand": "美心",
+      "model_code": "CX23",
+      "status": "已确认入库",
+      "preview": "previews/CX23.png",
+      "mesh_filename": "CX23.glb",
+      "note": "生成件，已确认进入内部样板。不给客户看，不计价，不能下单。"
+    }
+  ],
+  "skipped": [
+    {
+      "priority": 6,
+      "part_id": "cabinetry",
+      "category_zh": "全屋定制",
+      "brand": "Nobilia",
+      "model_code": "U60",
+      "status": "未做",
+      "note": "没有产品图，这件没做。"
+    }
+  ]
+}

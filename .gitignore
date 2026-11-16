@@ -25,3 +25,8 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Hunyuan evaluation meshes. Previews are committed; GLBs are not.
+/生模评测/
+packages/catalog/internal-sample/生模评测/
+packages/catalog/internal-sample/generated/*.glb

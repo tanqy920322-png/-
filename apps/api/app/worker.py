@@ -25,6 +25,16 @@ def acknowledge(db, job_id: str) -> None:
     result = dict(job.result or {})
     if result.get("worker_ack"):
         return
+    if job.kind == "image_to_3d":
+        result["worker_ack"] = True
+        result["paid_api_called"] = False
+        result["worker_note"] = "免费额度已用尽，后付费未开通。队列消费者不调用付费生模。"
+        job.result = result
+        job.status = "blocked"
+        job.updated_at = utcnow()
+        db.commit()
+        logger.info("blocked image-to-3d %s", job.id)
+        return
     result["worker_ack"] = True
     result["worker_note"] = "队列消费者已确认。图像与识图适配器尚未接入，不调用外部模型。"
     job.result = result

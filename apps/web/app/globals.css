@@ -300,6 +300,10 @@ button.lightbox {
   margin-bottom: 6px;
   background: #f6f1ea;
 }
+.mesh-note {
+  word-break: break-all;
+  line-height: 1.55;
+}
 .plan-board {
   position: relative;
   width: 100%;

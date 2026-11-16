@@ -22,7 +22,7 @@ from app.models import (
     UnitType,
 )
 from app.services.catalog_seed import seed_demo_bindings, seed_example_products
-from app.services.internal_catalog import seed_internal_samples
+from app.services.internal_catalog import seed_confirmed_generated, seed_internal_samples
 from app.services.visual_demo import seed_visual_demo
 from app.services.importer import parse_price_table
 
@@ -444,5 +444,6 @@ def seed(db: Session) -> None:
         if demo.get("selection_id"):
             seed_visual_demo(db, project.id, units["A"].id, demo["selection_id"])
     seed_internal_samples(db)
+    seed_confirmed_generated(db)
     db.commit()
     logger.info("seed ready: project %s, styles %s", project.code, len(catalog["styles"]))
