@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { API_BASE, api, ApiError, downloadFile } from "@/lib/api";
+import { GenerationDesk } from "@/components/GenerationDesk";
 import { ChineseFile } from "@/components/ui";
 import { ADMIN_TOKEN, useToken } from "@/lib/session";
 import type { CatalogProduct } from "@/lib/types";
@@ -152,7 +153,9 @@ export default function LibraryPage() {
             if (file) uploadPack(file);
           }}
         />
+        <p className="fine">图册导入后先待确认，确认了才进客户示例库。要用这张图或另一份产品图生模，用下面的入口，不要点「确认入库」。</p>
       </section>
+      <GenerationDesk token={token} />
       <section className="stack">
         <h2>待人工确认</h2>
         {pending.length === 0 ? <p className="muted">现在没有待确认的型号。</p> : null}
@@ -178,7 +181,7 @@ export default function LibraryPage() {
       <section className="card stack">
         <strong>通用件</strong>
         <p className="fine">
-          这里只按品类常用尺寸做一件通用方块，不连接付费生模。图生三维未完成，待评清单在「内部样板」。
+          这里只按品类常用尺寸做一件通用方块，放进示例产品库，不连接付费生模。图生三维走上方「生模入口」，也能在「内部样板」发起。首批五件已经确认入库；再发起会因免费额度用尽停住。
         </p>
         <label className="field">
           名称

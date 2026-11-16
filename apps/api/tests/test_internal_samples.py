@@ -1,6 +1,18 @@
+import json
+import os
+from pathlib import Path
+
 from app.database import get_session_factory
 from app.models import GeneratedCandidate
 from app.services.image_to_3d import paid_image_to_3d_hook
+
+REPO = Path(__file__).resolve().parents[3]
+GENERATED = REPO / "packages" / "catalog" / "internal-sample" / "generated"
+CONFIRMED_CODES = ["HC0508PT", "CW887REBTM", "E8331L1_DG", "NXXY1157", "CX23"]
+TINY_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
+    b"\x00\x00\x00\x0cIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe|\xc3\xc1,\x00\x00\x00\x00IEND\xaeB`\x82"
+)
 
 def auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
@@ -88,23 +100,27 @@ def test_material_textures_are_served_and_do_not_enter_the_customer_catalog(clie
     assert "T05FA261401" not in codes
 
 
-def test_generation_is_unfinished_and_confirm_stays_inside_the_internal_library(client):
+def test_confirmed_batch_and_manual_confirm_stay_inside_the_internal_library(client):
     admin = login_admin(client)
     status = client.get("/api/admin/generation", headers=auth(admin))
     assert status.status_code == 200
     body = status.json()
-    assert body["status"] == "未完成"
+    assert body["status"] == "首批五件已确认入库"
     assert body["paid_api_called"] is False
+    assert body["postpaid_enabled"] is False
+    assert body["free_pack_exhausted"] is True
+    assert body["can_generate"] is False
+    assert "额度不足" in body["note"]
+    assert "后付费没有开通" in body["note"]
+    assert "祺盛" in body["note"]
     assert body["queue"] == []
-    assert [item["status"] for item in body["review"]] == ["未接免费接口"] * 6
-    assert [item["model_code"] for item in body["review"]] == [
-        "HC0508PT",
-        "CW887REBTM",
-        "E8331L1_DG",
-        "NXXY1157",
-        "CX23",
-        "U60",
-    ]
+    review = {item["model_code"]: item for item in body["review"]}
+    assert list(review) == ["HC0508PT", "CW887REBTM", "E8331L1_DG", "NXXY1157", "CX23", "U60"]
+    for code in ("HC0508PT", "CW887REBTM", "E8331L1_DG", "NXXY1157", "CX23"):
+        assert review[code]["status"] == "已确认入库"
+    assert review["U60"]["status"] == "未做"
+    assert "没有产品图" in review["U60"]["note"]
+    assert "未接免费接口" not in status.text
     db = get_session_factory()()
     db.add(
         GeneratedCandidate(
@@ -143,3 +159,154 @@ def test_generation_is_unfinished_and_confirm_stays_inside_the_internal_library(
         pass
     else:
         raise AssertionError("paid hook should refuse")
+
+
+def test_five_generated_meshes_stay_internal_and_quote_is_unchanged(client, tmp_path):
+    manifest = json.loads((GENERATED / "manifest.json").read_text(encoding="utf-8"))
+    assert [item["model_code"] for item in manifest["items"]] == CONFIRMED_CODES
+    assert manifest["skipped"][0]["model_code"] == "U60"
+    assert "没有产品图" in manifest["skipped"][0]["note"]
+    assert manifest["free_pack_exhausted"] is True
+    assert manifest["postpaid_enabled"] is False
+    assert manifest["paid_api_called"] is False
+    assert list((GENERATED / "previews").glob("*.glb")) == []
+    for item in manifest["items"]:
+        preview = GENERATED / item["preview"]
+        assert preview.is_file()
+        assert preview.read_bytes().startswith(b"\x89PNG")
+        assert not (GENERATED / item["mesh_filename"]).exists()
+
+    admin = login_admin(client)
+    payload = client.get("/api/admin/internal-samples", headers=auth(admin)).json()
+    assert payload["pack_count"] == 20
+    assert payload["verified_count"] == 18
+    assert "祺盛" in payload["disclaimer"]
+    assert "禊盛" not in json.dumps(payload, ensure_ascii=False)
+    pack = [item for item in payload["items"] if item["source"] == "sample_pack"]
+    assert len(pack) == 20
+    generated = [item for item in payload["items"] if item["source"] == "generated" and item["model_code"] in CONFIRMED_CODES]
+    generated.sort(key=lambda item: item["priority"])
+    assert [item["model_code"] for item in generated] == CONFIRMED_CODES
+    parts = {
+        "HC0508PT": "sanitary",
+        "CW887REBTM": "sanitary",
+        "E8331L1_DG": "switch_socket",
+        "NXXY1157": "lighting",
+        "CX23": "entry_door",
+    }
+    for item in generated:
+        assert item["part_id"] == parts[item["model_code"]]
+        assert item["confirmed"] is True
+        assert item["customer_visible"] is False
+        assert item["priced"] is False
+        assert item["orderable"] is False
+        assert "生成件" in item["data_status"]
+        assert "不给客户看" in item["data_status"]
+        assert item["has_image"] is True
+        image = client.get(item["image_url"], headers=auth(admin))
+        assert image.status_code == 200
+        assert image.content.startswith(b"\x89PNG")
+        assert item["mesh_ready"] is False
+        assert "生模评测" in item["mesh_note"]
+        assert item["model_code"] in item["mesh_note"]
+        missing = client.get(item["mesh_url"], headers=auth(admin))
+        assert missing.status_code == 404
+        assert item["model_code"] in missing.json()["detail"]
+        assert "生模评测" in missing.json()["detail"]
+    schneider = next(item for item in generated if item["model_code"] == "E8331L1_DG")
+    assert schneider["brand_label"] == "施耐德 / Schneider"
+    pack_codes = {item["model_code"] for item in pack}
+    assert set(CONFIRMED_CODES) <= pack_codes
+    assert "U60" in pack_codes
+    assert client.get("/api/admin/internal-samples/isample-01/mesh", headers=auth(admin)).status_code == 404
+
+    customer = login_customer(client, "13800138000")
+    public_codes = {item["model_code"] for item in client.get("/api/products").json()}
+    assert set(CONFIRMED_CODES).isdisjoint(public_codes)
+    selection = client.get("/api/selections/sel_demo", headers=auth(customer)).json()
+    assert selection["quote"]["total"] == 33511.8
+    dumped = json.dumps(selection, ensure_ascii=False)
+    for code in CONFIRMED_CODES:
+        assert code not in dumped
+
+    os.environ["QISHENG_MESH_DIR"] = str(tmp_path)
+    try:
+        (tmp_path / "HC0508PT.glb").write_bytes(b"glTF\x02\x00\x00\x00test-mesh")
+        mounted = client.get("/api/admin/internal-samples", headers=auth(admin)).json()
+        toilet = next(item for item in mounted["items"] if item["id"] == "isample-gen-HC0508PT")
+        assert toilet["mesh_ready"] is True
+        assert "HC0508PT.glb" in toilet["mesh_note"]
+        mesh = client.get(toilet["mesh_url"], headers=auth(admin))
+        assert mesh.status_code == 200
+        assert mesh.content.startswith(b"glTF")
+        other = next(item for item in mounted["items"] if item["id"] == "isample-gen-CX23")
+        assert other["mesh_ready"] is False
+        absent = client.get(other["mesh_url"], headers=auth(admin))
+        assert absent.status_code == 404
+        assert "CX23.glb" in absent.json()["detail"]
+    finally:
+        os.environ.pop("QISHENG_MESH_DIR", None)
+    cleared = client.get("/api/admin/internal-samples", headers=auth(admin)).json()
+    again = next(item for item in cleared["items"] if item["id"] == "isample-gen-HC0508PT")
+    assert again["mesh_ready"] is False
+
+
+def test_new_generation_stops_when_the_free_pack_is_exhausted(client):
+    admin = login_admin(client)
+    customer = login_customer(client, "13800138000")
+    before_ids = {item["id"] for item in client.get("/api/products").json()}
+    before_total = client.get("/api/selections/sel_demo", headers=auth(customer)).json()["quote"]["total"]
+    assert before_total == 33511.8
+    os.environ["HUNYUAN_API_KEY"] = "do-not-use"
+    try:
+        started = client.post(
+            "/api/admin/generation/start",
+            headers=auth(admin),
+            files={"file": ("door.png", TINY_PNG, "image/png")},
+            data={"part_id": "entry_door", "brand": "美心", "model_code": "CX23", "name": "入户门再生成"},
+        )
+    finally:
+        os.environ.pop("HUNYUAN_API_KEY", None)
+    assert started.status_code == 200
+    body = started.json()
+    assert body["status"] == "blocked"
+    assert body["paid_api_called"] is False
+    assert body["postpaid_enabled"] is False
+    assert body["free_pack_exhausted"] is True
+    assert body["priced"] is False
+    assert body["orderable"] is False
+    assert body["customer_visible"] is False
+    assert "额度已用尽" in body["message"]
+    assert "后付费没有开通" in body["message"]
+    assert "付费接口" in body["message"]
+    assert "积分" in body["message"]
+    assert "禊盛" not in started.text
+    catalog = client.post(
+        "/api/admin/generation/start",
+        headers=auth(admin),
+        files={"file": ("manual.pdf", b"%PDF-1.1\n%%EOF", "application/pdf")},
+        data={"part_id": "", "brand": "", "model_code": "", "name": "图册"},
+    )
+    assert catalog.status_code == 200
+    assert catalog.json()["status"] == "blocked"
+    assert catalog.json()["paid_api_called"] is False
+    rejected = client.post(
+        "/api/admin/generation/start",
+        headers=auth(admin),
+        files={"file": ("notes.txt", b"hello", "text/plain")},
+    )
+    assert rejected.status_code == 400
+    denied = client.post(
+        "/api/admin/generation/start",
+        headers=auth(customer),
+        files={"file": ("door.png", TINY_PNG, "image/png")},
+    )
+    assert denied.status_code == 401
+    after_ids = {item["id"] for item in client.get("/api/products").json()}
+    assert after_ids == before_ids
+    assert client.get("/api/selections/sel_demo", headers=auth(customer)).json()["quote"]["total"] == 33511.8
+    listed = client.get("/api/admin/generation", headers=auth(admin)).json()
+    assert listed["paid_api_called"] is False
+    assert any(item["filename"] == "door.png" and item["status"] == "blocked" and item["paid_api_called"] is False for item in listed["attempts"])
+    assert any(item["filename"] == "manual.pdf" and item["paid_api_called"] is False for item in listed["attempts"])
+    assert all(item["status"] == "pending" for item in listed["queue"])

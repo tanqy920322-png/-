@@ -23,6 +23,10 @@ export default function AdminHomePage() {
     <div>
       <h1>概览</h1>
       <p className="muted">试点项目、客户方案和集采价表都从这里进。</p>
+      <p className="fine">
+        设计师工具：在 <Link href="/admin/library#generation">产品库</Link> 上传图册或产品图可以发起生模。
+        <Link href="/admin/samples">内部样板</Link> 里能看到已确认的 5 件生成件。免费额度已用尽，后付费未开通，新的发起会停住，不会调用付费接口。
+      </p>
       {error ? <p className="error">{error}</p> : null}
       {data ? (
         <>

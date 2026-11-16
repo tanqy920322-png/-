@@ -1,4 +1,8 @@
-"""Local photo stand-in, plus a reserved paid image-to-3D hook that nothing calls."""
+"""Local photo stand-in, a quota gate, and a reserved paid image-to-3D hook.
+
+The live generation desk stops when the free pack is exhausted. It does not call
+the paid hook, does not read API keys, and does not open a network connection.
+"""
 
 from app.services.sizes import DEFAULT_SIZES, size_for
 
@@ -51,6 +55,13 @@ SLOT_MM: dict[tuple[str, str], tuple[int, int, int]] = {
 }
 
 
+QUOTA_BLOCK_MESSAGE = (
+    "免费图生三维额度已用尽，后付费没有开通。"
+    "这次只记下设计师发起的生模，网格不会生成。"
+    "没有调用付费接口，没有读取或写入付费密钥，也不会开通后付费、购买积分包、充值或绑定支付。"
+)
+
+
 def paid_image_to_3d_hook(
     photos: list[bytes],
     category: str,
@@ -62,6 +73,25 @@ def paid_image_to_3d_hook(
     """
     del photos, category, size_mm
     raise RuntimeError("付费图生三维未授权，不会发出请求。")
+
+
+def blocked_generation_result() -> dict:
+    """Record that a new mesh cannot be produced.
+
+    The free pack is exhausted and post-paid stays off. This returns before any
+    provider call. The reserved paid hook is intentionally unused.
+    """
+    return {
+        "status": "blocked",
+        "reason": "quota_exhausted",
+        "paid_api_called": False,
+        "postpaid_enabled": False,
+        "free_pack_exhausted": True,
+        "customer_visible": False,
+        "priced": False,
+        "orderable": False,
+        "message": QUOTA_BLOCK_MESSAGE,
+    }
 
 
 def default_size_mm(part_id: str, slot_label: str) -> tuple[int, int, int]:
